@@ -45,12 +45,24 @@ describe('CLI Commands', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
       await command.parseAsync(
-        ['node', 'evaluate', '--dataset', datasetPath, '--output', outputPath, '--format', 'json,markdown', '--no-judge'],
+        [
+          'node',
+          'evaluate',
+          '--dataset',
+          datasetPath,
+          '--output',
+          outputPath,
+          '--format',
+          'json,markdown',
+          '--no-judge',
+        ],
         { from: 'node' }
       );
 
       expect(JSON.parse(readFileSync(outputPath, 'utf-8')).run_id).toBeDefined();
-      expect(readFileSync(join(tempDir, 'results.md'), 'utf-8')).toContain('# RAG Evaluation Report');
+      expect(readFileSync(join(tempDir, 'results.md'), 'utf-8')).toContain(
+        '# RAG Evaluation Report'
+      );
       expect(consoleSpy).toHaveBeenCalled();
     });
   });

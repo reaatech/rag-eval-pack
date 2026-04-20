@@ -1,0 +1,92 @@
+# Evaluation Configuration Example
+# rag-eval-pack - RAG evaluation metrics with LLM-as-judge, cost accounting, and CI gates
+
+evaluation:
+  # Metrics to compute
+  metrics:
+    - faithfulness
+    - relevance
+    - context_precision
+    - context_recall
+
+  # LLM Judge configuration
+  judge:
+    # Primary judge model
+    model: claude-sonnet-4-6
+    
+    # Enable/disable LLM judging
+    enabled: true
+    
+    # Calibration settings
+    calibration:
+      enabled: false
+      human_labels: 'calibration/human-labels.jsonl'
+      calibration_method: 'temperature_scaling'
+    
+    # Consensus settings (use multiple judges)
+    consensus:
+      enabled: false
+      models:
+        - claude-opus-4-7
+        - gpt-4o
+      voting_strategy: weighted
+    
+    # Cost controls for judge
+    cost:
+      budget_limit: 10.00
+      max_cost_per_judgment: 0.10
+      alert_thresholds: [0.5, 0.75, 0.9]
+
+  # Cost tracking configuration
+  cost:
+    # Total budget for evaluation run
+    budget_limit: 10.00
+    
+    # Hard limit (stop when exceeded)
+    hard_limit: false
+    
+    # Alert thresholds (budget usage ratio)
+    alert_thresholds: [0.5, 0.75, 0.9]
+
+  # Execution settings
+  execution:
+    # Number of parallel jobs
+    parallel_jobs: 5
+    
+    # Retry attempts for failed requests
+    retry_attempts: 3
+    
+    # Timeout per request (ms)
+    timeout_ms: 30000
+
+  # Gate configuration (inline)
+  gates:
+    - name: min-faithfulness
+      type: threshold
+      metric: avg_faithfulness
+      operator: ">="
+      threshold: 0.85
+
+    - name: min-relevance
+      type: threshold
+      metric: avg_relevance
+      operator: ">="
+      threshold: 0.80
+
+    - name: min-context-precision
+      type: threshold
+      metric: avg_context_precision
+      operator: ">="
+      threshold: 0.75
+
+    - name: min-context-recall
+      type: threshold
+      metric: avg_context_recall
+      operator: ">="
+      threshold: 0.90
+
+    - name: max-cost-per-sample
+      type: threshold
+      metric: cost_per_sample
+      operator: "<="
+      threshold: 0.05

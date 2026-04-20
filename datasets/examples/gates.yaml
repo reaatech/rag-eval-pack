@@ -1,0 +1,42 @@
+# Gate Configuration Example
+# rag-eval-pack - RAG evaluation metrics with LLM-as-judge, cost accounting, and CI gates
+
+gates:
+  # Threshold gates - ensure minimum quality
+  - name: min-faithfulness
+    type: threshold
+    metric: avg_faithfulness
+    operator: ">="
+    threshold: 0.85
+
+  - name: min-relevance
+    type: threshold
+    metric: avg_relevance
+    operator: ">="
+    threshold: 0.80
+
+  - name: min-context-precision
+    type: threshold
+    metric: avg_context_precision
+    operator: ">="
+    threshold: 0.75
+
+  - name: min-context-recall
+    type: threshold
+    metric: avg_context_recall
+    operator: ">="
+    threshold: 0.90
+
+  # Cost gate - ensure budget compliance
+  - name: max-cost-per-sample
+    type: threshold
+    metric: cost_per_sample
+    operator: "<="
+    threshold: 0.05
+
+  # Baseline comparison gate - prevent regressions
+  - name: no-regression
+    type: baseline-comparison
+    baseline: results/baseline.json
+    metric: overall_score
+    allow_regression: false

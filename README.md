@@ -32,6 +32,13 @@ npx rag-eval-pack gate \
 - **Three-Layer MCP Tools** — Atomic (judge), orchestrated (suite), and CI (gate) layers
 - **Observability** — OpenTelemetry tracing, metrics, and structured logging
 
+## Ecosystem
+
+This pack is designed to work alongside:
+
+- **[hybrid-rag-qdrant](https://github.com/reaatech/hybrid-rag-qdrant)** — Hybrid search RAG pipeline (dense + sparse retrieval with Qdrant). Feed its outputs directly into `rag-eval-pack` for quality evaluation.
+- **[agent-eval-harness](https://github.com/reaatech/agent-eval-harness)** — Agent trajectory evaluation. Use it to assess end-to-end agent behavior, then use `rag-eval-pack` to evaluate the RAG-specific quality of retrieved answers.
+
 ## Installation
 
 ```bash

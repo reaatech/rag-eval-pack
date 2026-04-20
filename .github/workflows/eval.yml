@@ -1,0 +1,91 @@
+name: RAG Evaluation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  evaluate:
+    name: Run Evaluation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          npx rag-eval-pack evaluate \
+            --dataset datasets/examples/samples.jsonl \
+            --config datasets/examples/config.yaml \
+            --output results/eval-results.json
+
+      - name: Run regression gates
+        run: |
+          npx rag-eval-pack gate \
+            --results results/eval-results.json \
+            --gates datasets/examples/gates.yaml \
+            --baseline results/baseline.json
+        continue-on-error: true
+        id: gate-check
+
+      - name: Upload evaluation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: results/
+
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            try {
+              const results = JSON.parse(fs.readFileSync('results/eval-results.json', 'utf8'));
+              const metrics = results.metrics;
+              
+              const comment = `## 📊 RAG Evaluation Results
+            
+            | Metric | Score |
+            |--------|-------|
+            | Faithfulness | ${metrics.avg_faithfulness?.toFixed(3) || 'N/A'} |
+            | Relevance | ${metrics.avg_relevance?.toFixed(3) || 'N/A'} |
+            | Context Precision | ${metrics.avg_context_precision?.toFixed(3) || 'N/A'} |
+            | Context Recall | ${metrics.avg_context_recall?.toFixed(3) || 'N/A'} |
+            | Overall Score | ${metrics.overall_score?.toFixed(3) || 'N/A'} |
+            | Cost per Sample | $${metrics.cost_per_sample?.toFixed(4) || 'N/A'} |
+            
+            **Samples:** ${metrics.total_samples || 0}
+            **Total Cost:** $${results.total_cost?.toFixed(2) || '0.00'}
+            
+            ${process.exitCode === 0 ? '✅ **All gates passed!**' : '❌ **Some gates failed.** Check the artifacts for details.'}`;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.error('Failed to create PR comment:', error);
+            }
+
+      - name: Fail if gates failed
+        if: steps.gate-check.outcome == 'failure'
+        run: exit 1

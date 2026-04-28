@@ -42,7 +42,7 @@
     "compromise": "^14.15.0",
     "js-tiktoken": "^1.0.15",
     "natural": "^8.1.1",
-    "openai": "^4.73.0",
+    "openai": "^6.35.0",
     "p-limit": "^6.2.0",
     "pino": "^9.5.0",
     "pino-pretty": "^12.0.0",

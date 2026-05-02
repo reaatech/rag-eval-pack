@@ -14,7 +14,7 @@ RAG Eval Suite orchestrates comprehensive evaluation of RAG systems, combining m
 ## Usage
 
 ```typescript
-import { EvaluationSuite } from 'rag-eval-pack';
+import { EvaluationSuite } from '@reaatech/rag-eval-suite';
 
 const suite = new EvaluationSuite({
   metrics: ['faithfulness', 'relevance', 'context_precision', 'context_recall'],

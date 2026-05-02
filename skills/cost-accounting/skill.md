@@ -23,7 +23,7 @@ Cost Accounting tracks and manages the expenses associated with RAG evaluation, 
 ## Usage
 
 ```typescript
-import { CostTracker } from 'rag-eval-pack';
+import { CostTracker } from '@reaatech/rag-eval-cost';
 
 const tracker = new CostTracker({
   budgetLimit: 10.00,

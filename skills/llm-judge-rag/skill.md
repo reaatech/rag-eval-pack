@@ -22,7 +22,7 @@ LLM-as-Judge uses large language models to evaluate RAG output quality, providin
 ## Usage
 
 ```typescript
-import { JudgeEngine } from 'rag-eval-pack';
+import { JudgeEngine } from '@reaatech/rag-eval-judge';
 
 const judge = new JudgeEngine({
   model: 'claude-opus',

@@ -22,7 +22,7 @@ Context Recall measures whether the retrieved context contains all the informati
 ## Usage
 
 ```typescript
-import { ContextRecallScorer } from 'rag-eval-pack';
+import { ContextRecallScorer } from '@reaatech/rag-eval-metrics';
 
 const scorer = new ContextRecallScorer();
 const result = await scorer.score({

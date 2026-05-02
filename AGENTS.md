@@ -11,9 +11,84 @@ confidence_threshold: 0.9
 
 ## What this is
 
-This document defines how to use `rag-eval-pack` to evaluate RAG (Retrieval-Augmented Generation) systems through comprehensive metrics including faithfulness, answer relevance, context precision/recall, with cost accounting and CI gates. It covers the three-layer MCP tool architecture (judge/suite/gate), LLM-as-judge with calibration, and CI integration patterns.
+This document defines how to use `rag-eval-pack` to evaluate RAG (Retrieval-Augmented Generation) systems through comprehensive metrics including faithfulness, answer relevance, context precision/recall, with cost accounting and CI gates. It covers the 10-package monorepo structure, three-layer MCP tool architecture (judge/suite/gate), LLM-as-judge with calibration, and CI integration patterns.
 
 **Target audience:** Engineers building production RAG systems who need to evaluate retrieval and generation quality, optimize costs, ensure quality, and prevent regressions in CI/CD pipelines.
+
+---
+
+## Monorepo Structure
+
+```
+rag-eval-pack/
+├── packages/
+│   ├── core/              # @reaatech/rag-eval-core
+│   ├── metrics/           # @reaatech/rag-eval-metrics
+│   ├── cost/              # @reaatech/rag-eval-cost
+│   ├── judge/             # @reaatech/rag-eval-judge
+│   ├── gate/              # @reaatech/rag-eval-gate
+│   ├── dataset/           # @reaatech/rag-eval-dataset
+│   ├── observability/     # @reaatech/rag-eval-observability
+│   ├── suite/             # @reaatech/rag-eval-suite
+│   ├── mcp-server/        # @reaatech/rag-eval-mcp-server
+│   └── cli/               # @reaatech/rag-eval-cli
+├── pnpm-workspace.yaml
+├── turbo.json
+├── biome.json
+├── tsconfig.json
+└── .github/workflows/
+```
+
+### Package Dependency Graph
+
+```
+core ← metrics ← suite ← mcp-server, cli
+  ↑       ↑
+  ├── cost ← judge ← suite, cli
+  ├── gate ← suite, mcp-server, cli
+  ├── dataset ← suite, cli
+  └── observability (standalone)
+```
+
+### Key Components
+
+| Component | Package | Purpose |
+|-----------|---------|---------|
+| **Types & Schemas** | `@reaatech/rag-eval-core` | Domain types, Zod schemas |
+| **Faithfulness Scorer** | `@reaatech/rag-eval-metrics` | Measure answer grounding in context |
+| **Relevance Scorer** | `@reaatech/rag-eval-metrics` | Measure answer relevance to query |
+| **Context Precision** | `@reaatech/rag-eval-metrics` | Measure retrieval ranking quality |
+| **Context Recall** | `@reaatech/rag-eval-metrics` | Measure ground truth coverage |
+| **LLM Judge** | `@reaatech/rag-eval-judge` | Calibrated quality scoring with multi-provider support |
+| **Cost Tracker** | `@reaatech/rag-eval-cost` | Per-evaluation cost calculation and budget enforcement |
+| **Gate Engine** | `@reaatech/rag-eval-gate` | CI regression gates and threshold checks |
+| **Dataset Manager** | `@reaatech/rag-eval-dataset` | Dataset loading, validation, generation |
+| **Observability** | `@reaatech/rag-eval-observability` | Structured logging, OTel tracing, metrics |
+| **Evaluation Suite** | `@reaatech/rag-eval-suite` | Central orchestrator tying all modules together |
+| **MCP Server** | `@reaatech/rag-eval-mcp-server` | Three-layer MCP tool exposure |
+| **CLI** | `@reaatech/rag-eval-cli` | CLI commands and master barrel re-export |
+
+### Tooling
+
+| Tool | Purpose |
+|------|---------|
+| **pnpm** (10.22) | Package manager with workspace support |
+| **turbo** (2.5) | Monorepo build orchestration |
+| **biome** (1.9) | Linting and formatting (replaces eslint + prettier) |
+| **tsup** (8.4) | Per-package build (cjs + esm + dts) |
+| **changesets** (2.28) | Versioning and changelog generation |
+| **vitest** (3.2) | Test runner |
+| **TypeScript** (5.8) | Type checking |
+
+### Dev Commands
+
+```bash
+pnpm build       # Build all packages (turbo)
+pnpm test        # Run all tests (turbo)
+pnpm lint        # Lint all files (biome)
+pnpm typecheck   # Type-check cross-package imports
+pnpm changeset   # Create a changeset for versioning
+```
 
 ---
 
@@ -37,19 +112,6 @@ This document defines how to use `rag-eval-pack` to evaluate RAG (Retrieval-Augm
                        │    gate.*        │
                        └──────────────────┘
 ```
-
-### Key Components
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| **Faithfulness Scorer** | `src/metrics/faithfulness.ts` | Measure answer grounding in context |
-| **Relevance Scorer** | `src/metrics/relevance.ts` | Measure answer relevance to query |
-| **Context Precision** | `src/metrics/context-precision.ts` | Measure retrieval ranking quality |
-| **Context Recall** | `src/metrics/context-recall.ts` | Measure ground truth coverage |
-| **LLM Judge** | `src/judge/` | Calibrated quality scoring |
-| **Cost Tracker** | `src/cost/` | Per-evaluation cost calculation |
-| **Gate Engine** | `src/gate/` | CI regression gates |
-| **MCP Server** | `src/mcp-server/` | Three-layer tool exposure |
 
 ---
 
@@ -167,25 +229,31 @@ Opinionated, blocking operations for CI/CD:
 judge:
   # Primary judge model (any provider)
   model: claude-opus
-  
+
   # Fallback models for resilience
   fallback_models:
     - gpt-4-turbo
     - gemini-pro
-  
+
   # Calibration settings
   calibration:
     enabled: true
     human_labels: 'calibration/human-labels.jsonl'
     calibration_method: 'temperature_scaling'
-  
+
   # Consensus settings
   consensus:
     enabled: true
-    models: [claude-opus, gpt-4-turbo]
+    models:
+      - id: claude-opus
+        weight: 0.5
+      - id: gpt-4-turbo
+        weight: 0.3
+      - id: gemini-pro
+        weight: 0.2
     voting_strategy: weighted
     tie_breaker: highest_confidence
-  
+
   # Cost controls
   cost:
     budget_limit: 50.00
@@ -201,14 +269,14 @@ judge:
 4. **Apply calibration** to future judge scores
 
 ```typescript
-import { JudgeCalibrator } from 'rag-eval-pack';
+import { JudgeCalibrator } from '@reaatech/rag-eval-judge';
 
 const calibrator = new JudgeCalibrator({
   humanLabelsPath: 'calibration/human-labels.jsonl',
   method: 'temperature_scaling',
 });
 
-await calibrator.calibrate();
+await calibrator.train();
 
 // Apply calibration to new scores
 const calibratedScore = calibrator.apply(rawScore);
@@ -252,13 +320,13 @@ cost:
     gemini-pro:
       input: 2.50
       output: 7.50
-  
+
   # Budget settings
   budgets:
     per_sample: 0.05
     per_run: 10.00
     daily: 100.00
-  
+
   # Alert thresholds
   alerts:
     - threshold: 0.5
@@ -278,15 +346,18 @@ The pack tracks costs at multiple levels:
   "run_id": "eval-123",
   "total_cost": 1.234,
   "breakdown": {
-    "faithfulness_judge": 0.500,
-    "relevance_judge": 0.250,
-    "context_precision": 0.000,
-    "context_recall": 0.000
-  },
-  "per_sample": [
-    { "sample_id": 1, "cost": 0.012, "tokens": { "input": 500, "output": 50 } },
-    { "sample_id": 2, "cost": 0.011, "tokens": { "input": 450, "output": 45 } }
-  ]
+    "total": 1.234,
+    "by_metric": {
+      "faithfulness_judge": 0.500,
+      "relevance_judge": 0.250
+    },
+    "by_provider": {
+      "anthropic": 0.750
+    },
+    "per_sample": [
+      { "sample_id": "sample-1", "cost": 0.012, "tokens": { "input": 500, "output": 50 } }
+    ]
+  }
 }
 ```
 
@@ -309,51 +380,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Run evaluation suite
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          npx rag-eval-pack evaluate \
-            --dataset datasets/eval-samples.jsonl \
-            --config eval-config.yaml \
-            --output results.json
-      
+          node packages/cli/dist/cli.js evaluate \
+            --dataset datasets/examples/samples.jsonl \
+            --config datasets/examples/config.yaml \
+            --output results/eval-results.json
+
       - name: Run regression gates
         run: |
-          npx rag-eval-pack gate \
-            --results results.json \
-            --gates gates.yaml \
+          node packages/cli/dist/cli.js gate \
+            --results results/eval-results.json \
+            --gates datasets/examples/gates.yaml \
             --baseline results/baseline.json
-      
-      - name: Upload results
+        continue-on-error: true
+        id: gate-check
+
+      - name: Upload evaluation results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: eval-results
           path: results/
-      
-      - name: Comment on PR
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const results = require('./results.json');
-            const comment = `## Evaluation Results
-            
-            **Overall Score:** ${results.overall_score}
-            **Faithfulness:** ${results.avg_faithfulness}
-            **Relevance:** ${results.avg_relevance}
-            **Context Precision:** ${results.avg_context_precision}
-            **Context Recall:** ${results.avg_context_recall}
-            **Gates:** ${results.gates_passed ? '✅ Passed' : '❌ Failed'}
-            
-            ${results.regressions.length > 0 ? '**Regressions:**\n' + results.regressions.map(r => `- ${r.metric}: ${r.baseline} → ${r.current}`).join('\n') : ''}`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+
+      - name: Fail if gates failed
+        if: steps.gate-check.outcome == 'failure'
+        run: exit 1
 ```
 
 ### Gate Configuration
@@ -363,13 +429,13 @@ jobs:
 gates:
   - name: min-faithfulness
     type: threshold
-    metric: avg_faithfulness_score
+    metric: avg_faithfulness
     operator: ">="
     threshold: 0.85
 
   - name: min-relevance
     type: threshold
-    metric: avg_relevance_score
+    metric: avg_relevance
     operator: ">="
     threshold: 0.80
 
@@ -393,7 +459,6 @@ gates:
 
   - name: no-regression
     type: baseline-comparison
-    baseline: results/baseline.json
     metric: overall_score
     allow_regression: false
 ```
@@ -402,36 +467,27 @@ gates:
 
 ## Using with RAG Systems
 
-### Integration with hybrid-rag-qdrant
-
-Use rag-eval-pack to evaluate outputs from hybrid-rag-qdrant:
+### Integration Example
 
 ```typescript
-import { RAGPipeline } from 'hybrid-rag-qdrant';
-import { EvaluationEngine, FaithfulnessScorer, RelevanceScorer } from 'rag-eval-pack';
+import { EvaluationSuite } from '@reaatech/rag-eval-suite';
+import { FaithfulnessScorer } from '@reaatech/rag-eval-metrics';
 
-const rag = new RAGPipeline({ /* config */ });
-const evalEngine = new EvaluationEngine({ /* config */ });
+const suite = new EvaluationSuite({
+  metrics: ['faithfulness', 'relevance', 'context_precision', 'context_recall'],
+  judge: { model: 'claude-opus' },
+  cost: { budget_limit: 10.00 },
+  gates: [
+    { name: 'min-faithfulness', type: 'threshold', metric: 'avg_faithfulness', operator: '>=', threshold: 0.85 },
+  ],
+});
 
-// Run RAG on test queries
-const results = [];
-for (const sample of evalDataset) {
-  const ragResult = await rag.query(sample.query);
-  results.push({
-    query: sample.query,
-    context: ragResult.chunks.map(c => c.content),
-    ground_truth: sample.ground_truth,
-    generated_answer: ragResult.answer,
-  });
-}
+const result = await suite.runFromFile('datasets/eval-samples.jsonl');
 
-// Evaluate results
-const evalResults = await evalEngine.evaluate(results);
-
-console.log(`Faithfulness: ${evalResults.avg_faithfulness}`);
-console.log(`Relevance: ${evalResults.avg_relevance}`);
-console.log(`Context Precision: ${evalResults.avg_context_precision}`);
-console.log(`Context Recall: ${evalResults.avg_context_recall}`);
+console.log(`Faithfulness: ${result.results.metrics.avg_faithfulness}`);
+console.log(`Relevance: ${result.results.metrics.avg_relevance}`);
+console.log(`Context Precision: ${result.results.metrics.avg_context_precision}`);
+console.log(`Context Recall: ${result.results.metrics.avg_context_recall}`);
 ```
 
 ### Multi-Agent Workflow
@@ -440,7 +496,7 @@ console.log(`Context Recall: ${evalResults.avg_context_recall}`);
 User Query → agent-mesh (orchestrator)
                   │
                   ▼
-           RAG Retrieval (hybrid-rag-qdrant)
+           RAG Retrieval
                   │
                   ▼
            Answer Generation
@@ -491,8 +547,6 @@ const runResult = await agent.call('rag_eval.suite.run', {
 const results = await agent.call('rag_eval.suite.results', {
   run_id: runResult.run_id,
 });
-
-// Analyze results for improvements
 ```
 
 ### Pattern 3: CI Gate Enforcement
@@ -506,7 +560,6 @@ const gateResult = await agent.call('rag_eval.gate.run', {
 });
 
 if (!gateResult.passed) {
-  // Block deployment
   process.exit(1);
 }
 ```
@@ -516,7 +569,6 @@ if (!gateResult.passed) {
 Monitor and control evaluation costs:
 
 ```typescript
-// Check budget before expensive operation
 const budget = await agent.call('rag_eval.judge.cost_check', {
   eval_result: partialResults,
   budget: { daily_limit: 50.00 },
@@ -537,14 +589,14 @@ return await agent.call('rag_eval.judge.faithfulness', { /* */ });
 
 ### PII Handling
 
-- **Never log raw content** — only hashed identifiers
-- **Query text truncated in logs** — first 100 characters only
-- **Exports sanitized** — PII removed before export
-- **Context data protected** — sensitive information redacted
+- Never log raw content — only hashed identifiers
+- Query text truncated in logs — first 100 characters only
+- Exports sanitized — PII removed before export
+- Context data protected — sensitive information redacted
 
 ### API Key Management
 
-- All LLM API keys from environment variables
+- All LLM API keys from environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`)
 - Never log API keys or tokens
 - Separate keys per provider for isolation
 - Key rotation supported without downtime
@@ -552,15 +604,12 @@ return await agent.call('rag_eval.judge.faithfulness', { /* */ });
 ### Cost Controls
 
 ```typescript
-const engine = new EvaluationEngine({
-  // ... config
-  costControls: {
-    maxCostPerSample: 0.05,
-    maxCostPerRun: 10.00,
-    maxCostPerDay: 100.00,
-    alertThresholds: [0.5, 0.75, 0.9],
-    hardLimit: true,
-  },
+import { CostTracker } from '@reaatech/rag-eval-cost';
+
+const tracker = new CostTracker({
+  budgetLimit: 100.00,
+  hardLimit: true,
+  alertThresholds: [0.5, 0.75, 0.9],
 });
 ```
 
@@ -620,15 +669,16 @@ Before deploying a RAG evaluation pipeline to production:
 - [ ] Reproducibility verified (same inputs → same outputs)
 - [ ] Provider fallbacks configured for resilience
 - [ ] Rate limits configured per provider
+- [ ] npm token created and added as GitHub secret (`NPM_TOKEN`)
+- [ ] GitHub Actions workflow permissions set to read/write
+- [ ] First manual publish completed
 
 ---
 
 ## References
 
-- **ARCHITECTURE.md** — System design deep dive
+- **ARCHITECTURE.md** — System design deep dive and package relationships
 - **DEV_PLAN.md** — Development checklist
 - **README.md** — Quick start and overview
 - **datasets/examples/** — Example evaluation datasets
 - **MCP Specification** — https://modelcontextprotocol.io/
-- **agent-eval-harness/AGENTS.md** — Agent trajectory evaluation patterns
-- **hybrid-rag-qdrant/AGENTS.md** — RAG pipeline patterns

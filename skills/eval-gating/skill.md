@@ -21,7 +21,7 @@ Evaluation Gating provides CI-style pass/fail gates for RAG evaluation, enabling
 ## Usage
 
 ```typescript
-import { GateEngine } from 'rag-eval-pack';
+import { GateEngine } from '@reaatech/rag-eval-gate';
 
 const engine = new GateEngine([
   {

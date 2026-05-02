@@ -22,7 +22,7 @@ Relevance measures whether a RAG system's generated answer actually addresses th
 ## Usage
 
 ```typescript
-import { RelevanceScorer } from 'rag-eval-pack';
+import { RelevanceScorer } from '@reaatech/rag-eval-metrics';
 
 const scorer = new RelevanceScorer();
 const result = await scorer.score({

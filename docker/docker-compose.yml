@@ -1,0 +1,11 @@
+services:
+  eval:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    volumes:
+      - ../datasets:/app/datasets:ro
+      - ./results:/app/results

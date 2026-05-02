@@ -1,0 +1,58 @@
+{
+  "name": "@reaatech/rag-eval-cli",
+  "version": "0.1.0",
+  "description": "CLI entry point and commands for the RAG evaluation toolkit",
+  "license": "MIT",
+  "author": "Rick Somers <rick@reaatech.com> (https://reaatech.com)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reaatech/rag-eval-pack.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/reaatech/rag-eval-pack/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/reaatech/rag-eval-pack/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup src/cli.ts src/index.ts --format cjs,esm --dts --clean",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@reaatech/rag-eval-core": "workspace:*",
+    "@reaatech/rag-eval-cost": "workspace:*",
+    "@reaatech/rag-eval-dataset": "workspace:*",
+    "@reaatech/rag-eval-gate": "workspace:*",
+    "@reaatech/rag-eval-judge": "workspace:*",
+    "@reaatech/rag-eval-mcp-server": "workspace:*",
+    "@reaatech/rag-eval-metrics": "workspace:*",
+    "@reaatech/rag-eval-observability": "workspace:*",
+    "@reaatech/rag-eval-suite": "workspace:*",
+    "chalk": "^5.3.0",
+    "cli-progress": "^3.12.0",
+    "commander": "^14.0.3",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}

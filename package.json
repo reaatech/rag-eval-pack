@@ -2,7 +2,7 @@
   "name": "rag-eval-pack",
   "version": "0.1.0",
   "private": true,
-  "description": "Evaluation toolkit for RAG (Retrieval-Augmented Generation) systems — monorepo of composable metrics, judges, gates, and CLI tools",
+  "description": "Evaluation toolkit for RAG (Retrieval-Augmented Generation) systems \u2014 monorepo of composable metrics, judges, gates, and CLI tools",
   "type": "module",
   "scripts": {
     "build": "turbo run build",
@@ -48,5 +48,10 @@
     "turbo": "^2.5.0",
     "typescript": "^5.8.3",
     "vitest": "^3.1.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "uuid": ">=14.0.0"
+    }
   }
 }

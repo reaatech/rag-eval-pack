@@ -31,6 +31,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          mkdir -p results
           node packages/cli/dist/cli.js evaluate \
             --dataset datasets/examples/samples.jsonl \
             --config datasets/examples/config.yaml \

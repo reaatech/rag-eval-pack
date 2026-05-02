@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  uuid: '>=14.0.0'
+
 importers:
 
   .:
@@ -2343,8 +2346,8 @@ packages:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
     engines: {node: '>= 0.8'}
 
-  uuid@13.0.1:
-    resolution: {integrity: sha512-9ezox2roIft6ExBVTVqibSd5dc5/47Sw/uY6b4SjQUT2TzQ0tltNquWA46y4xPQmdZYqvnio22SgWd41M86+jw==}
+  uuid@14.0.0:
+    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
     hasBin: true
 
   vary@1.1.2:
@@ -3872,7 +3875,7 @@ snapshots:
       stopwords-iso: 1.1.0
       sylvester: 0.0.21
       underscore: 1.13.8
-      uuid: 13.0.1
+      uuid: 14.0.0
       wordnet-db: 3.1.14
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
@@ -4443,7 +4446,7 @@ snapshots:
 
   unpipe@1.0.0: {}
 
-  uuid@13.0.1: {}
+  uuid@14.0.0: {}
 
   vary@1.1.2: {}
 

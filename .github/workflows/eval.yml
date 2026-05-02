@@ -1,7 +1,11 @@
 name: RAG Evaluation
 
+# Runs on workflow_dispatch and push to main only.
+# Pull requests should NOT trigger this — it requires API keys
+# and is a gate, not a CI check.
 on:
-  pull_request:
+  workflow_dispatch:
+  push:
     branches: [main]
 
 jobs:

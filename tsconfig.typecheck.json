@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@reaatech/rag-eval-core": ["./packages/core/src/index.ts"],
+      "@reaatech/rag-eval-metrics": ["./packages/metrics/src/index.ts"],
+      "@reaatech/rag-eval-cost": ["./packages/cost/src/index.ts"],
+      "@reaatech/rag-eval-judge": ["./packages/judge/src/index.ts"],
+      "@reaatech/rag-eval-gate": ["./packages/gate/src/index.ts"],
+      "@reaatech/rag-eval-dataset": ["./packages/dataset/src/index.ts"],
+      "@reaatech/rag-eval-observability": ["./packages/observability/src/index.ts"],
+      "@reaatech/rag-eval-suite": ["./packages/suite/src/index.ts"],
+      "@reaatech/rag-eval-mcp-server": ["./packages/mcp-server/src/index.ts"],
+      "@reaatech/rag-eval-cli": ["./packages/cli/src/index.ts"]
+    }
+  }
+}

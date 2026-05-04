@@ -1,0 +1,49 @@
+{
+  "name": "@reaatech/rag-eval-metrics",
+  "version": "0.1.0",
+  "description": "RAG evaluation metric scorers: faithfulness, relevance, context precision/recall",
+  "license": "MIT",
+  "author": "Rick Somers <rick@reaatech.com> (https://reaatech.com)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reaatech/rag-eval-pack.git",
+    "directory": "packages/metrics"
+  },
+  "homepage": "https://github.com/reaatech/rag-eval-pack/tree/main/packages/metrics#readme",
+  "bugs": {
+    "url": "https://github.com/reaatech/rag-eval-pack/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@reaatech/rag-eval-core": "workspace:*",
+    "compromise": "^14.15.0",
+    "natural": "^8.1.1",
+    "p-limit": "^7.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}

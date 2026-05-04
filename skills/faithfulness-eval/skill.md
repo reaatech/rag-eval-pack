@@ -22,7 +22,7 @@ Faithfulness measures whether a RAG system's generated answer is grounded in the
 ## Usage
 
 ```typescript
-import { FaithfulnessScorer } from 'rag-eval-pack';
+import { FaithfulnessScorer } from '@reaatech/rag-eval-metrics';
 
 const scorer = new FaithfulnessScorer();
 const result = await scorer.score({

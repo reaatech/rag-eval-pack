@@ -1,13 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { EvaluationSuite } from '../../src/evaluation-suite.js';
-import { GateEngine } from '../../src/gate/engine.js';
-import { DatasetLoader } from '../../src/dataset/loader.js';
 import type {
-  EvaluationSample,
-  EvalSuiteConfig,
-  EvalResults,
   CostBreakdown,
-} from '../../src/types/domain.js';
+  EvalResults,
+  EvalSuiteConfig,
+  EvaluationSample,
+} from '@reaatech/rag-eval-core';
+import { DatasetLoader } from '@reaatech/rag-eval-dataset';
+import { GateEngine } from '@reaatech/rag-eval-gate';
+import { EvaluationSuite } from '@reaatech/rag-eval-suite';
+import { describe, expect, it } from 'vitest';
 
 describe('Integration: Evaluation Pipeline', () => {
   const sampleData: EvaluationSample[] = [
@@ -68,10 +68,11 @@ describe('Integration: Evaluation Pipeline', () => {
         total: 0.1,
         by_metric: {},
         by_provider: {},
+        per_sample: [],
       });
 
       const createEvalResults = (
-        overrides: Partial<EvalResults['metrics']> & { runId: string }
+        overrides: Partial<EvalResults['metrics']> & { runId: string },
       ): EvalResults => ({
         run_id: overrides.runId,
         evaluated_at: new Date().toISOString(),

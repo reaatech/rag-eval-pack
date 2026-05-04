@@ -22,7 +22,7 @@ Dataset Management handles the creation, validation, versioning, and maintenance
 ## Usage
 
 ```typescript
-import { DatasetLoader } from 'rag-eval-pack';
+import { DatasetLoader } from '@reaatech/rag-eval-dataset';
 
 const loader = new DatasetLoader();
 

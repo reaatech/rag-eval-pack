@@ -22,7 +22,7 @@ Context Precision measures how well the retrieved context chunks are ranked, ass
 ## Usage
 
 ```typescript
-import { ContextPrecisionScorer } from 'rag-eval-pack';
+import { ContextPrecisionScorer } from '@reaatech/rag-eval-metrics';
 
 const scorer = new ContextPrecisionScorer();
 const result = await scorer.score({

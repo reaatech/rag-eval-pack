@@ -1,40 +1,45 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 
-# Build output
+# Build outputs
 dist/
+build/
+*.tsbuildinfo
 
-# Test coverage
-coverage/
+# Stray build artifacts inside src/ (tsup output belongs in dist/ only)
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
 
-# Environment files
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environment
 .env
 .env.local
 .env.*.local
 
 # IDE
-.claude/
-.idea/
 .vscode/
+.idea/
+.claude/
 *.swp
 *.swo
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-logs/
+# Test
+coverage/
 
-# Temp files
-tmp/
-temp/
-*.tmp
+# Turborepo
+.turbo/
 
-# Test outputs
-results.json
-*.results.json
-
-# Project-specific
+# Development
 DEV_PLAN.md

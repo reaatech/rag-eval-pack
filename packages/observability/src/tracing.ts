@@ -1,5 +1,5 @@
-import { SpanKind, SpanStatusCode, context, trace } from '@opentelemetry/api';
 import type { Span, Tracer } from '@opentelemetry/api';
+import { context, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api';
 
 const tracer: Tracer = trace.getTracer('rag-eval-pack', '0.1.0');
 

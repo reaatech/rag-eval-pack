@@ -1,8 +1,10 @@
 import type { EvaluationSample } from '@reaatech/rag-eval-core';
-import { FaithfulnessScorer } from '@reaatech/rag-eval-metrics';
-import { RelevanceScorer } from '@reaatech/rag-eval-metrics';
-import { ContextPrecisionScorer } from '@reaatech/rag-eval-metrics';
-import { ContextRecallScorer } from '@reaatech/rag-eval-metrics';
+import {
+  ContextPrecisionScorer,
+  ContextRecallScorer,
+  FaithfulnessScorer,
+  RelevanceScorer,
+} from '@reaatech/rag-eval-metrics';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('Metrics', () => {

@@ -1,5 +1,5 @@
-import { metrics } from '@opentelemetry/api';
 import type { Counter, Gauge, Histogram, Meter } from '@opentelemetry/api';
+import { metrics } from '@opentelemetry/api';
 
 const meter: Meter = metrics.getMeter('rag-eval-pack', '0.1.0');
 

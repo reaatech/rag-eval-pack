@@ -7,14 +7,14 @@ import type {
 } from '@reaatech/rag-eval-core';
 import { type CalibrationDataPoint, JudgeCalibrator } from './calibration.js';
 import {
+  applyPromptTemplate,
   CONTEXT_PRECISION_PROMPT,
   CONTEXT_RECALL_PROMPT,
   FAITHFULNESS_PROMPT,
   OVERALL_QUALITY_PROMPT,
   type PromptTemplate,
-  RELEVANCE_PROMPT,
-  applyPromptTemplate,
   parseJudgeResponse,
+  RELEVANCE_PROMPT,
 } from './prompts.js';
 
 /** Judge metric type */

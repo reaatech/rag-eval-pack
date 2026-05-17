@@ -1,7 +1,5 @@
 import type { EvaluationSample, JudgeConfig } from '@reaatech/rag-eval-core';
-import { JudgeEngine } from '@reaatech/rag-eval-judge';
-import { JudgeCalibrator } from '@reaatech/rag-eval-judge';
-import { JudgeCostTracker } from '@reaatech/rag-eval-judge';
+import { JudgeCalibrator, JudgeCostTracker, JudgeEngine } from '@reaatech/rag-eval-judge';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('JudgeEngine', () => {

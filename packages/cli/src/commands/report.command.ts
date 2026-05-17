@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { CIIntegration } from '@reaatech/rag-eval-gate';
-import { GateEngine } from '@reaatech/rag-eval-gate';
+import { CIIntegration, GateEngine } from '@reaatech/rag-eval-gate';
 import { Command } from 'commander';
 import { parse as parseYaml } from 'yaml';
 

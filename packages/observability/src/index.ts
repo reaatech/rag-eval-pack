@@ -2,41 +2,39 @@
  * Observability module exports
  */
 
+export { Dashboard, type DashboardMetrics, type EvalRunSummary } from './dashboard.js';
 export {
-  logger,
   createRunLogger,
-  logEvalStart,
-  logEvalComplete,
-  logGateResult,
   logError,
+  logEvalComplete,
+  logEvalStart,
+  logGateResult,
+  logger,
 } from './logger.js';
 
 export {
-  createSpan,
-  withSpan,
-  traceEvalRun,
-  traceMetricCalculation,
-  traceJudgeCall,
-  traceGateEvaluation,
-  addSpanAttribute,
-  recordSpanError,
-  type SpanAttributes,
-} from './tracing.js';
-
-export {
+  costPerRunHistogram,
   evalRunsTotal,
-  samplesEvaluated,
+  gatesResultGauge,
   judgeCallsTotal,
   judgeCostHistogram,
-  gatesResultGauge,
-  costPerRunHistogram,
   metricsScoreGauge,
-  recordEvalRun,
-  recordJudgeCall,
-  recordGateResult,
   recordCost,
-  recordMetricScore,
   recordEvalComplete,
+  recordEvalRun,
+  recordGateResult,
+  recordJudgeCall,
+  recordMetricScore,
+  samplesEvaluated,
 } from './metrics.js';
-
-export { Dashboard, type EvalRunSummary, type DashboardMetrics } from './dashboard.js';
+export {
+  addSpanAttribute,
+  createSpan,
+  recordSpanError,
+  type SpanAttributes,
+  traceEvalRun,
+  traceGateEvaluation,
+  traceJudgeCall,
+  traceMetricCalculation,
+  withSpan,
+} from './tracing.js';

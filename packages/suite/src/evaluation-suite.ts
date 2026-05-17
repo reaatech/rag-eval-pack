@@ -9,8 +9,7 @@ import type {
 import { CostTracker } from '@reaatech/rag-eval-cost';
 import { DatasetLoader } from '@reaatech/rag-eval-dataset';
 import { GateEngine } from '@reaatech/rag-eval-gate';
-import { JudgeEngine, type JudgeMetric } from '@reaatech/rag-eval-judge';
-import { JudgeCostTracker } from '@reaatech/rag-eval-judge';
+import { JudgeCostTracker, JudgeEngine, type JudgeMetric } from '@reaatech/rag-eval-judge';
 import { MetricsEngine } from '@reaatech/rag-eval-metrics';
 
 /**

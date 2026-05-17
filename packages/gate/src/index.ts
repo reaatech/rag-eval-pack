@@ -2,12 +2,12 @@
  * Gate module exports
  */
 
-export { GateEngine } from './engine.js';
-export { ThresholdGates, type ThresholdGateConfig } from './threshold-gates.js';
-export { BaselineGates, type BaselineGateConfig } from './baseline-gates.js';
+export { type BaselineGateConfig, BaselineGates } from './baseline-gates.js';
 export {
   CIIntegration,
   type GitHubActionsOutput,
   type JUnitReport,
   type PRCommentData,
 } from './ci-integration.js';
+export { GateEngine } from './engine.js';
+export { type ThresholdGateConfig, ThresholdGates } from './threshold-gates.js';

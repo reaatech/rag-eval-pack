@@ -1,8 +1,10 @@
 import type { EvaluationSample } from '@reaatech/rag-eval-core';
-import { DatasetLoader } from '@reaatech/rag-eval-dataset';
-import { DatasetValidator } from '@reaatech/rag-eval-dataset';
-import { DatasetGenerator } from '@reaatech/rag-eval-dataset';
-import { DatasetVersioning } from '@reaatech/rag-eval-dataset';
+import {
+  DatasetGenerator,
+  DatasetLoader,
+  DatasetValidator,
+  DatasetVersioning,
+} from '@reaatech/rag-eval-dataset';
 import { describe, expect, it } from 'vitest';
 
 describe('Dataset', () => {

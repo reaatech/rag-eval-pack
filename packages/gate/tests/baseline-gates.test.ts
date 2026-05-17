@@ -1,6 +1,6 @@
 import type { EvalResults } from '@reaatech/rag-eval-core';
-import { BaselineGates } from '@reaatech/rag-eval-gate';
 import type { BaselineGateConfig } from '@reaatech/rag-eval-gate';
+import { BaselineGates } from '@reaatech/rag-eval-gate';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('BaselineGates', () => {

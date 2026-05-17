@@ -1,5 +1,5 @@
-import { ThresholdGates } from '@reaatech/rag-eval-gate';
 import type { ThresholdGateConfig } from '@reaatech/rag-eval-gate';
+import { ThresholdGates } from '@reaatech/rag-eval-gate';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('ThresholdGates', () => {

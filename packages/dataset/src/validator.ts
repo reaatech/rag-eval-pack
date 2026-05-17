@@ -40,7 +40,7 @@ export class DatasetValidator {
         EvaluationSampleSchema.parse(sample);
       } catch (e) {
         if (e instanceof z.ZodError) {
-          for (const err of e.errors) {
+          for (const err of e.issues) {
             errors.push({
               field: `samples[${i}].${err.path.join('.')}`,
               message: err.message,
@@ -92,7 +92,7 @@ export class DatasetValidator {
       if (e instanceof z.ZodError) {
         return {
           valid: false,
-          error: e.errors.map((err) => `${err.path.join('.')}: ${err.message}`).join('; '),
+          error: e.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join('; '),
         };
       }
       return { valid: false, error: 'Unknown validation error' };

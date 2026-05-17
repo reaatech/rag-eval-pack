@@ -12,7 +12,7 @@ export const EvaluationSampleSchema = z.object({
   ground_truth: z.string().min(1, 'Ground truth cannot be empty'),
   generated_answer: z.string().min(1, 'Generated answer cannot be empty'),
   retrieved_chunk_ids: z.array(z.string()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 /** Faithfulness result schema */
@@ -89,7 +89,7 @@ export const AggregatedMetricsSchema = z.object({
   avg_context_recall: z.number().min(0).max(1),
   cost_per_sample: z.number().min(0),
   total_samples: z.number().min(0),
-  std_dev: z.record(z.number()).optional(),
+  std_dev: z.record(z.string(), z.number()).optional(),
 });
 
 /** Token count schema */
@@ -109,8 +109,8 @@ export const SampleCostSchema = z.object({
 /** Cost breakdown schema */
 export const CostBreakdownSchema = z.object({
   total: z.number().min(0),
-  by_metric: z.record(z.number().min(0)),
-  by_provider: z.record(z.number().min(0)),
+  by_metric: z.record(z.string(), z.number().min(0)),
+  by_provider: z.record(z.string(), z.number().min(0)),
   per_sample: z.array(SampleCostSchema),
 });
 
@@ -289,7 +289,7 @@ export const ComparisonResultSchema = z.object({
   baseline_run_id: z.string(),
   candidate_run_id: z.string(),
   overall_change: z.number(),
-  metric_changes: z.record(MetricChangeSchema),
+  metric_changes: z.record(z.string(), MetricChangeSchema),
   has_regressions: z.boolean(),
   regressions: z.array(RegressionDetailSchema),
 });
@@ -304,8 +304,8 @@ export const DatasetVersionSchema = z.object({
   samples: z
     .object({
       total: z.number().min(0),
-      by_domain: z.record(z.number().min(0)).optional(),
-      by_difficulty: z.record(z.number().min(0)).optional(),
+      by_domain: z.record(z.string(), z.number().min(0)).optional(),
+      by_difficulty: z.record(z.string(), z.number().min(0)).optional(),
     })
     .optional(),
 });

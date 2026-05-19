@@ -45,6 +45,20 @@ export class ContextPrecisionScorer {
   }
 
   /**
+   * Normalize a word by removing common suffixes for fuzzy matching
+   */
+  private normalizeWord(word: string): string {
+    if (word.length <= 3) return word;
+    let w = word;
+    if (w.endsWith('ing') && w.length > 4) w = w.slice(0, -3);
+    else if (w.endsWith('ed') && w.length > 4) w = w.slice(0, -2);
+    else if (w.endsWith('es') && w.length > 4) w = w.slice(0, -2);
+    else if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) w = w.slice(0, -1);
+    else if (w.endsWith('ly') && w.length > 4) w = w.slice(0, -2);
+    return w;
+  }
+
+  /**
    * Assess relevance of a single context chunk
    */
   private async assessChunkRelevance(
@@ -60,20 +74,23 @@ export class ContextPrecisionScorer {
       return 1.0;
     }
 
-    // Check keyword overlap with ground truth
+    // Check keyword overlap with ground truth (with normalization)
     const groundTruthWords = this.getSignificantWords(groundTruthLower);
-    const chunkWords = new Set(this.getWords(chunkLower));
+    const chunkWords = this.getWords(chunkLower);
+    const normalizedChunkWords = new Set(chunkWords.map((w) => this.normalizeWord(w)));
 
     if (groundTruthWords.length === 0) {
       return 0.5;
     }
 
-    const matchedWords = groundTruthWords.filter((w) => chunkWords.has(w));
+    const matchedWords = groundTruthWords.filter((w) =>
+      normalizedChunkWords.has(this.normalizeWord(w)),
+    );
     const groundTruthCoverage = matchedWords.length / groundTruthWords.length;
 
     // Also check overlap with query
     const queryWords = this.getSignificantWords(query.toLowerCase());
-    const queryMatched = queryWords.filter((w) => chunkWords.has(w));
+    const queryMatched = queryWords.filter((w) => normalizedChunkWords.has(this.normalizeWord(w)));
     const queryCoverage = queryWords.length > 0 ? queryMatched.length / queryWords.length : 0;
 
     // Weighted score: 70% ground truth coverage, 30% query relevance

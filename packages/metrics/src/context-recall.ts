@@ -118,6 +118,20 @@ export class ContextRecallScorer {
   }
 
   /**
+   * Normalize a word by removing common suffixes for fuzzy matching
+   */
+  private normalizeWord(word: string): string {
+    if (word.length <= 3) return word;
+    let w = word;
+    if (w.endsWith('ing') && w.length > 4) w = w.slice(0, -3);
+    else if (w.endsWith('ed') && w.length > 4) w = w.slice(0, -2);
+    else if (w.endsWith('es') && w.length > 4) w = w.slice(0, -2);
+    else if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) w = w.slice(0, -1);
+    else if (w.endsWith('ly') && w.length > 4) w = w.slice(0, -2);
+    return w;
+  }
+
+  /**
    * Check if a fact is covered by the context
    */
   private async checkFactCoverage(fact: string, context: string): Promise<FactCoverage> {
@@ -133,9 +147,10 @@ export class ContextRecallScorer {
       };
     }
 
-    // Check keyword overlap
+    // Check keyword overlap with normalization
     const factWords = this.getSignificantWords(factLower);
     const contextWords = new Set(this.getWords(contextLower));
+    const normalizedContext = new Set([...contextWords].map((w) => this.normalizeWord(w)));
 
     if (factWords.length === 0) {
       return {
@@ -144,7 +159,9 @@ export class ContextRecallScorer {
       };
     }
 
-    const matchedWords = factWords.filter((w) => contextWords.has(w));
+    const matchedWords = factWords.filter(
+      (w) => contextWords.has(w) || normalizedContext.has(this.normalizeWord(w)),
+    );
     const overlapRatio = matchedWords.length / factWords.length;
 
     // Consider fact covered if at least 70% of significant words match

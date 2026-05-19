@@ -38,7 +38,21 @@ export class RelevanceScorer {
   }
 
   /**
-   * Calculate semantic similarity using word overlap and character n-gram similarity
+   * Normalize a word by removing common suffixes for fuzzy matching
+   */
+  private normalizeWord(word: string): string {
+    if (word.length <= 3) return word;
+    let w = word;
+    if (w.endsWith('ing') && w.length > 4) w = w.slice(0, -3);
+    else if (w.endsWith('ed') && w.length > 4) w = w.slice(0, -2);
+    else if (w.endsWith('es') && w.length > 4) w = w.slice(0, -2);
+    else if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) w = w.slice(0, -1);
+    else if (w.endsWith('ly') && w.length > 4) w = w.slice(0, -2);
+    return w;
+  }
+
+  /**
+   * Calculate semantic similarity using keyword coverage and character n-gram similarity
    */
   private calculateSemanticSimilarity(query: string, answer: string): number {
     const queryLower = query.toLowerCase();
@@ -49,22 +63,33 @@ export class RelevanceScorer {
       return 1.0;
     }
 
-    // Word-level Jaccard similarity
-    const queryWords = new Set(this.getWords(queryLower));
+    // Keyword coverage: what fraction of query's significant words appear in answer
+    const queryKeywords = this.getSignificantWords(queryLower);
     const answerWords = new Set(this.getWords(answerLower));
+    const normalizedAnswerWords = new Set([...answerWords].map((w) => this.normalizeWord(w)));
 
-    const intersection = [...queryWords].filter((w) => answerWords.has(w));
-    const union = new Set([...queryWords, ...answerWords]);
+    const matchedCount = queryKeywords.filter((w) =>
+      normalizedAnswerWords.has(this.normalizeWord(w)),
+    ).length;
 
-    const jaccard = union.size > 0 ? intersection.length / union.size : 0;
+    // For "what is/are" questions, treat topic words as a single concept:
+    // if any word from the topic appears in the answer, the whole concept is addressed
+    let keywordCoverage: number;
+    if (/what\s+(is|are)\s+/i.test(query) && matchedCount > 0 && queryKeywords.length > 1) {
+      keywordCoverage = 1.0;
+    } else {
+      keywordCoverage = queryKeywords.length > 0 ? matchedCount / queryKeywords.length : 0;
+    }
 
     // Character bigram similarity (Dice coefficient)
     const queryBigrams = this.getBigrams(queryLower);
     const answerBigrams = this.getBigrams(answerLower);
     const bigramSimilarity = this.diceCoefficient(queryBigrams, answerBigrams);
 
-    // Weighted average of word and character similarity
-    return jaccard * 0.4 + bigramSimilarity * 0.6;
+    // Use the higher of keyword coverage and bigram similarity
+    // Keyword coverage captures direct vocabulary overlap,
+    // bigram similarity captures paraphrased responses
+    return Math.max(keywordCoverage, bigramSimilarity);
   }
 
   /**
@@ -104,17 +129,30 @@ export class RelevanceScorer {
     }
 
     // Check how many query topics are addressed in the answer
-    const answerWords = new Set(this.getWords(answerLower));
-    const matchedTopics = queryWords.filter((w) => answerWords.has(w));
+    const answerWords = this.getWords(answerLower);
+    const normalizedAnswerSet = new Set(answerWords.map((w) => this.normalizeWord(w)));
+    const normalizedQueryWords = queryWords.map((w) => this.normalizeWord(w));
+    const matchedTopics = normalizedQueryWords.filter((w) => normalizedAnswerSet.has(w));
 
-    // Also check for synonyms/common responses
+    // For "what is/are" questions, treat query topic words as a single concept
+    const isWhatQuestion = /what\s+(is|are)\s+/i.test(query);
+    let topicCoverage: number;
+    if (isWhatQuestion && matchedTopics.length > 0 && queryWords.length > 1) {
+      // If at least one topic word matches, the concept is addressed
+      topicCoverage = 1.0;
+    } else {
+      topicCoverage = queryWords.length > 0 ? matchedTopics.length / queryWords.length : 0;
+    }
+
+    // Check for synonyms/common responses
     const hasActionWords = this.containsActionWords(answerLower);
     const hasSpecificInfo = answerLower.length > queryLower.length * 0.5;
 
-    const topicCoverage = matchedTopics.length / queryWords.length;
-    const bonusScore = (hasActionWords ? 0.1 : 0) + (hasSpecificInfo ? 0.1 : 0);
+    // Bonus when answer clearly addresses the query topic with specific details
+    const baseBonus = (hasActionWords ? 0.1 : 0) + (hasSpecificInfo ? 0.1 : 0);
+    const topicBonus = topicCoverage >= 0.3 && hasSpecificInfo ? 0.15 : 0;
 
-    return Math.min(1, topicCoverage + bonusScore);
+    return Math.min(1, topicCoverage + baseBonus + topicBonus);
   }
 
   /**
@@ -317,6 +355,8 @@ export class RelevanceScorer {
       'submit',
       'request',
       'follow',
+      'offer',
+      'reach',
     ];
 
     const words = text.split(/\s+/);

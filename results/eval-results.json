@@ -1,0 +1,650 @@
+{
+  "run_id": "eval-1779153350837-tl1kmc",
+  "evaluated_at": "2026-05-19T01:15:50.844Z",
+  "dataset": "datasets/examples/samples.jsonl",
+  "config": {
+    "metrics": ["faithfulness", "relevance", "context_precision", "context_recall"],
+    "judge": {
+      "model": "claude-sonnet-4-6",
+      "enabled": true,
+      "calibration": {
+        "enabled": false,
+        "human_labels": "calibration/human-labels.jsonl",
+        "calibration_method": "temperature_scaling"
+      },
+      "consensus": {
+        "enabled": false,
+        "models": ["claude-opus-4-7", "gpt-4o"],
+        "voting_strategy": "weighted"
+      },
+      "cost": {
+        "budget_limit": 10,
+        "max_cost_per_judgment": 0.1,
+        "alert_thresholds": [0.5, 0.75, 0.9]
+      }
+    },
+    "cost": {
+      "budget_limit": 10,
+      "hard_limit": false,
+      "alert_thresholds": [0.5, 0.75, 0.9]
+    },
+    "execution": {
+      "parallel_jobs": 5,
+      "retry_attempts": 3,
+      "timeout_ms": 30000
+    },
+    "gates": [
+      {
+        "name": "min-faithfulness",
+        "type": "threshold",
+        "metric": "avg_faithfulness",
+        "operator": ">=",
+        "threshold": 0.85
+      },
+      {
+        "name": "min-relevance",
+        "type": "threshold",
+        "metric": "avg_relevance",
+        "operator": ">=",
+        "threshold": 0.8
+      },
+      {
+        "name": "min-context-precision",
+        "type": "threshold",
+        "metric": "avg_context_precision",
+        "operator": ">=",
+        "threshold": 0.75
+      },
+      {
+        "name": "min-context-recall",
+        "type": "threshold",
+        "metric": "avg_context_recall",
+        "operator": ">=",
+        "threshold": 0.9
+      },
+      {
+        "name": "max-cost-per-sample",
+        "type": "threshold",
+        "metric": "cost_per_sample",
+        "operator": "<=",
+        "threshold": 0.05
+      }
+    ]
+  },
+  "metrics": {
+    "overall_score": 0.955,
+    "avg_faithfulness": 1,
+    "avg_relevance": 0.96,
+    "avg_context_precision": 0.885,
+    "avg_context_recall": 0.92,
+    "cost_per_sample": 0.0012000000000000001,
+    "total_samples": 5,
+    "std_dev": {
+      "faithfulness": 0,
+      "relevance": 0.08,
+      "context_precision": 0.139,
+      "context_recall": 0.16,
+      "overall": 0.071
+    }
+  },
+  "samples": [
+    {
+      "sample_id": 0,
+      "sample": {
+        "query": "What is the refund policy?",
+        "context": [
+          "Refunds are processed within 14 days of purchase.",
+          "Contact support@example.com for refund requests."
+        ],
+        "ground_truth": "Refunds must be requested within 14 days by contacting support.",
+        "generated_answer": "You can request a refund within 14 days by emailing support@example.com.",
+        "retrieved_chunk_ids": ["chunk-001", "chunk-002"],
+        "metadata": {
+          "source": "policy-doc-v2"
+        }
+      },
+      "evaluated_at": "2026-05-19T01:15:50.837Z",
+      "relevance": {
+        "score": 1,
+        "semantic_similarity": 1,
+        "intent_score": 1,
+        "explanation": "Answer is highly relevant (semantic: 1.00, intent: 1.00)",
+        "judge_score": 0.48,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "faithfulness": {
+        "score": 1,
+        "statements": ["You can request a refund within 14 days by emailing support@example.com."],
+        "supported_count": 1,
+        "total_statements": 1,
+        "statement_support": [
+          {
+            "statement": "You can request a refund within 14 days by emailing support@example.com.",
+            "supported": true,
+            "reasoning": "88% keyword overlap with context"
+          }
+        ],
+        "explanation": "All 1 statements are supported by the context",
+        "judge_score": 0.57,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "context_precision": {
+        "score": 0.724,
+        "map": 0.5,
+        "ndcg": 0.948,
+        "chunk_relevance_scores": [0.45, 0.55],
+        "explanation": "Good context ranking. 1/2 chunks relevant. MAP: 0.50, NDCG: 0.95"
+      },
+      "context_recall": {
+        "score": 1,
+        "total_facts": 2,
+        "covered_facts": 2,
+        "facts": [
+          {
+            "fact": "Refunds must be requested within 1",
+            "covered": true,
+            "matching_context": "refunds are processed within 14 days of purchase."
+          },
+          {
+            "fact": "Refunds must be requested within 14 days by c",
+            "covered": true,
+            "matching_context": "refunds are processed within 14 days of purchase. contact support@example.com"
+          }
+        ],
+        "explanation": "All 2 facts are covered by the retrieved context"
+      },
+      "overall_score": 0.959,
+      "judge_overall": 0.63,
+      "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+    },
+    {
+      "sample_id": 1,
+      "sample": {
+        "query": "How do I reset my password?",
+        "context": [
+          "Password reset is available at /reset-password.",
+          "Enter your email to receive a reset link."
+        ],
+        "ground_truth": "Go to /reset-password and enter your email.",
+        "generated_answer": "Visit the password reset page and provide your email address.",
+        "retrieved_chunk_ids": ["chunk-003", "chunk-004"],
+        "metadata": {
+          "source": "help-center"
+        }
+      },
+      "evaluated_at": "2026-05-19T01:15:50.841Z",
+      "relevance": {
+        "score": 1,
+        "semantic_similarity": 1,
+        "intent_score": 1,
+        "explanation": "Answer is highly relevant (semantic: 1.00, intent: 1.00)",
+        "judge_score": 0.39,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "faithfulness": {
+        "score": 1,
+        "statements": ["Visit the password reset page and provide your email address."],
+        "supported_count": 1,
+        "total_statements": 1,
+        "statement_support": [
+          {
+            "statement": "Visit the password reset page and provide your email address.",
+            "supported": true,
+            "reasoning": "Character bigram similarity (53%) with context"
+          }
+        ],
+        "explanation": "All 1 statements are supported by the context",
+        "judge_score": 0.48,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "context_precision": {
+        "score": 0.995,
+        "map": 1,
+        "ndcg": 0.989,
+        "chunk_relevance_scores": [0.65, 0.675],
+        "explanation": "Excellent context ranking. 2/2 chunks relevant. MAP: 1.00, NDCG: 0.99"
+      },
+      "context_recall": {
+        "score": 1,
+        "total_facts": 2,
+        "covered_facts": 2,
+        "facts": [
+          {
+            "fact": "reset password enter",
+            "covered": true,
+            "matching_context": "is available at /reset-password. enter"
+          },
+          {
+            "fact": "enter email",
+            "covered": true,
+            "matching_context": "/reset-password. enter your email"
+          }
+        ],
+        "explanation": "All 2 facts are covered by the retrieved context"
+      },
+      "overall_score": 0.999,
+      "judge_overall": 0.52,
+      "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+    },
+    {
+      "sample_id": 2,
+      "sample": {
+        "query": "What are the shipping options?",
+        "context": [
+          "Standard shipping takes 5-7 business days.",
+          "Express shipping takes 2-3 business days.",
+          "Free shipping on orders over $50."
+        ],
+        "ground_truth": "Standard (5-7 days), Express (2-3 days), and free shipping on orders over $50.",
+        "generated_answer": "We offer standard 5-7 day shipping, express 2-3 day shipping, and free shipping for orders over $50.",
+        "retrieved_chunk_ids": ["chunk-005", "chunk-006", "chunk-007"],
+        "metadata": {
+          "source": "shipping-info"
+        }
+      },
+      "evaluated_at": "2026-05-19T01:15:50.842Z",
+      "relevance": {
+        "score": 1,
+        "semantic_similarity": 1,
+        "intent_score": 1,
+        "explanation": "Answer is highly relevant (semantic: 1.00, intent: 1.00)",
+        "judge_score": 0.42,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "faithfulness": {
+        "score": 1,
+        "statements": [
+          "We offer standard 5-7 day shipping, express 2-3 day shipping, and free shipping for orders over $50."
+        ],
+        "supported_count": 1,
+        "total_statements": 1,
+        "statement_support": [
+          {
+            "statement": "We offer standard 5-7 day shipping, express 2-3 day shipping, and free shipping for orders over $50.",
+            "supported": true,
+            "reasoning": "90% keyword overlap with context"
+          }
+        ],
+        "explanation": "All 1 statements are supported by the context",
+        "judge_score": 0.57,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "context_precision": {
+        "score": 1,
+        "map": 1,
+        "ndcg": 1,
+        "chunk_relevance_scores": [0.55, 0.55, 0.45],
+        "explanation": "Excellent context ranking. 2/3 chunks relevant. MAP: 1.00, NDCG: 1.00"
+      },
+      "context_recall": {
+        "score": 1,
+        "total_facts": 1,
+        "covered_facts": 1,
+        "facts": [
+          {
+            "fact": "and free shipping on o",
+            "covered": true,
+            "matching_context": "takes 2-3 business days. free shipping on"
+          }
+        ],
+        "explanation": "All 1 facts are covered by the retrieved context"
+      },
+      "overall_score": 1,
+      "judge_overall": 0.62,
+      "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+    },
+    {
+      "sample_id": 3,
+      "sample": {
+        "query": "How do I contact customer support?",
+        "context": [
+          "Customer support is available 24/7.",
+          "Call 1-800-SUPPORT or email help@example.com.",
+          "Live chat is available on the website."
+        ],
+        "ground_truth": "Call 1-800-SUPPORT, email help@example.com, or use live chat. Available 24/7.",
+        "generated_answer": "You can reach customer support by phone at 1-800-SUPPORT or by email.",
+        "retrieved_chunk_ids": ["chunk-008", "chunk-009"],
+        "metadata": {
+          "source": "contact-page"
+        }
+      },
+      "evaluated_at": "2026-05-19T01:15:50.843Z",
+      "relevance": {
+        "score": 0.8,
+        "semantic_similarity": 0.667,
+        "intent_score": 1,
+        "explanation": "Answer is highly relevant (semantic: 0.67, intent: 1.00)",
+        "judge_score": 0.45,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "faithfulness": {
+        "score": 1,
+        "statements": ["You can reach customer support by phone at 1-800-SUPPORT or by email."],
+        "supported_count": 1,
+        "total_statements": 1,
+        "statement_support": [
+          {
+            "statement": "You can reach customer support by phone at 1-800-SUPPORT or by email.",
+            "supported": true,
+            "reasoning": "67% keyword overlap with context"
+          }
+        ],
+        "explanation": "All 1 statements are supported by the context",
+        "judge_score": 0.57,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "context_precision": {
+        "score": 0.704,
+        "map": 0.5,
+        "ndcg": 0.909,
+        "chunk_relevance_scores": [0.34, 0.52, 0.21],
+        "explanation": "Good context ranking. 1/3 chunks relevant. MAP: 0.50, NDCG: 0.91"
+      },
+      "context_recall": {
+        "score": 0.6,
+        "total_facts": 5,
+        "covered_facts": 3,
+        "facts": [
+          {
+            "fact": "call support email",
+            "covered": true,
+            "matching_context": "24/7. call 1-800-support or email"
+          },
+          {
+            "fact": "email help example",
+            "covered": true,
+            "matching_context": "call 1-800-support or email help@example.com."
+          },
+          {
+            "fact": "example com use",
+            "covered": false
+          },
+          {
+            "fact": "use live chat",
+            "covered": false
+          },
+          {
+            "fact": "available",
+            "covered": true,
+            "matching_context": "support is available"
+          }
+        ],
+        "explanation": "3 of 5 facts covered. Missing: example com use; use live chat"
+      },
+      "overall_score": 0.816,
+      "judge_overall": 0.4,
+      "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+    },
+    {
+      "sample_id": 4,
+      "sample": {
+        "query": "What is the return window?",
+        "context": [
+          "Items can be returned within 30 days of delivery.",
+          "Items must be unused and in original packaging."
+        ],
+        "ground_truth": "Items can be returned within 30 days of delivery, unused and in original packaging.",
+        "generated_answer": "You have 30 days from delivery to return items. They must be unused and in the original packaging.",
+        "retrieved_chunk_ids": ["chunk-010", "chunk-011"],
+        "metadata": {
+          "source": "return-policy"
+        }
+      },
+      "evaluated_at": "2026-05-19T01:15:50.843Z",
+      "relevance": {
+        "score": 1,
+        "semantic_similarity": 1,
+        "intent_score": 1,
+        "explanation": "Answer is highly relevant (semantic: 1.00, intent: 1.00)",
+        "judge_score": 0.61,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "faithfulness": {
+        "score": 1,
+        "statements": [
+          "You have 30 days from delivery to return items.",
+          "They must be unused and in the original packaging."
+        ],
+        "supported_count": 2,
+        "total_statements": 2,
+        "statement_support": [
+          {
+            "statement": "You have 30 days from delivery to return items.",
+            "supported": true,
+            "reasoning": "100% keyword overlap with context"
+          },
+          {
+            "statement": "They must be unused and in the original packaging.",
+            "supported": true,
+            "reasoning": "100% keyword overlap with context"
+          }
+        ],
+        "explanation": "All 2 statements are supported by the context",
+        "judge_score": 0.54,
+        "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+      },
+      "context_precision": {
+        "score": 1,
+        "map": 1,
+        "ndcg": 1,
+        "chunk_relevance_scores": [0.588, 0.35],
+        "explanation": "Excellent context ranking. 1/2 chunks relevant. MAP: 1.00, NDCG: 1.00"
+      },
+      "context_recall": {
+        "score": 1,
+        "total_facts": 2,
+        "covered_facts": 2,
+        "facts": [
+          {
+            "fact": "Items can be returned within 3",
+            "covered": true,
+            "matching_context": "items can be returned within 30 days of"
+          },
+          {
+            "fact": "unused and in o",
+            "covered": true,
+            "matching_context": "must be unused and in original"
+          }
+        ],
+        "explanation": "All 2 facts are covered by the retrieved context"
+      },
+      "overall_score": 1,
+      "judge_overall": 0.6,
+      "judge_explanation": "Mock evaluation - in production, this would be evaluated by an LLM judge."
+    }
+  ],
+  "total_cost": 0.006,
+  "cost_breakdown": {
+    "total": 0.006,
+    "by_metric": {
+      "judge_faithfulness": 0.002,
+      "judge_relevance": 0.002,
+      "judge_overall": 0.002
+    },
+    "by_provider": {
+      "anthropic": 0.006000000000000001
+    },
+    "per_sample": [
+      {
+        "sample_id": 0,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 50,
+          "output": 15,
+          "total": 65
+        }
+      },
+      {
+        "sample_id": 0,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 50,
+          "output": 15,
+          "total": 65
+        }
+      },
+      {
+        "sample_id": 0,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 50,
+          "output": 15,
+          "total": 65
+        }
+      },
+      {
+        "sample_id": 1,
+        "cost": 0.0003,
+        "tokens": {
+          "input": 45,
+          "output": 14,
+          "total": 59
+        }
+      },
+      {
+        "sample_id": 1,
+        "cost": 0.0003,
+        "tokens": {
+          "input": 45,
+          "output": 14,
+          "total": 59
+        }
+      },
+      {
+        "sample_id": 1,
+        "cost": 0.0003,
+        "tokens": {
+          "input": 45,
+          "output": 14,
+          "total": 59
+        }
+      },
+      {
+        "sample_id": 2,
+        "cost": 0.0005,
+        "tokens": {
+          "input": 63,
+          "output": 19,
+          "total": 82
+        }
+      },
+      {
+        "sample_id": 2,
+        "cost": 0.0005,
+        "tokens": {
+          "input": 63,
+          "output": 19,
+          "total": 82
+        }
+      },
+      {
+        "sample_id": 2,
+        "cost": 0.0005,
+        "tokens": {
+          "input": 63,
+          "output": 19,
+          "total": 82
+        }
+      },
+      {
+        "sample_id": 3,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 57,
+          "output": 18,
+          "total": 75
+        }
+      },
+      {
+        "sample_id": 3,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 57,
+          "output": 18,
+          "total": 75
+        }
+      },
+      {
+        "sample_id": 3,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 57,
+          "output": 18,
+          "total": 75
+        }
+      },
+      {
+        "sample_id": 4,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 56,
+          "output": 17,
+          "total": 73
+        }
+      },
+      {
+        "sample_id": 4,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 56,
+          "output": 17,
+          "total": 73
+        }
+      },
+      {
+        "sample_id": 4,
+        "cost": 0.0004,
+        "tokens": {
+          "input": 56,
+          "output": 17,
+          "total": 73
+        }
+      }
+    ]
+  },
+  "duration_ms": 7,
+  "completed_at": "2026-05-19T01:15:50.844Z",
+  "gate_result": {
+    "passed": true,
+    "gates": [
+      {
+        "name": "min-faithfulness",
+        "passed": true,
+        "actual_value": 1,
+        "expected_value": 0.85,
+        "message": "avg_faithfulness (1.000) >= 0.85"
+      },
+      {
+        "name": "min-relevance",
+        "passed": true,
+        "actual_value": 0.96,
+        "expected_value": 0.8,
+        "message": "avg_relevance (0.960) >= 0.8"
+      },
+      {
+        "name": "min-context-precision",
+        "passed": true,
+        "actual_value": 0.885,
+        "expected_value": 0.75,
+        "message": "avg_context_precision (0.885) >= 0.75"
+      },
+      {
+        "name": "min-context-recall",
+        "passed": true,
+        "actual_value": 0.92,
+        "expected_value": 0.9,
+        "message": "avg_context_recall (0.920) >= 0.9"
+      },
+      {
+        "name": "max-cost-per-sample",
+        "passed": true,
+        "actual_value": 0.0012000000000000001,
+        "expected_value": 0.05,
+        "message": "cost_per_sample (0.001) <= 0.05"
+      }
+    ],
+    "failures": [],
+    "evaluated_at": "2026-05-19T01:15:50.844Z"
+  }
+}

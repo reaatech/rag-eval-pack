@@ -67,6 +67,20 @@ export class FaithfulnessScorer {
   }
 
   /**
+   * Normalize a word by removing common suffixes for fuzzy matching
+   */
+  private normalizeWord(word: string): string {
+    if (word.length <= 3) return word;
+    let w = word;
+    if (w.endsWith('ing') && w.length > 4) w = w.slice(0, -3);
+    else if (w.endsWith('ed') && w.length > 4) w = w.slice(0, -2);
+    else if (w.endsWith('es') && w.length > 4) w = w.slice(0, -2);
+    else if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) w = w.slice(0, -1);
+    else if (w.endsWith('ly') && w.length > 4) w = w.slice(0, -2);
+    return w;
+  }
+
+  /**
    * Check if a statement is supported by the context
    * Uses keyword overlap and semantic heuristics
    */
@@ -86,9 +100,10 @@ export class FaithfulnessScorer {
       };
     }
 
-    // Check for keyword overlap
+    // Check for keyword overlap with normalization
     const statementWords = this.getSignificantWords(statementLower);
     const contextWords = new Set(this.getSignificantWords(contextLower));
+    const normalizedContext = new Set([...contextWords].map((w) => this.normalizeWord(w)));
 
     if (statementWords.length === 0) {
       return {
@@ -98,18 +113,33 @@ export class FaithfulnessScorer {
       };
     }
 
-    const matchedWords = statementWords.filter((word) => contextWords.has(word));
+    const matchedWords = statementWords.filter(
+      (word) => contextWords.has(word) || normalizedContext.has(this.normalizeWord(word)),
+    );
     const overlapRatio = matchedWords.length / statementWords.length;
 
-    // Threshold for support - at least 60% of significant words match
-    const supported = overlapRatio >= 0.6;
+    // Fallback: check character bigram similarity for semantically related statements
+    let supported = overlapRatio >= 0.6;
+    let reasoning = supported
+      ? `${Math.round(overlapRatio * 100)}% keyword overlap with context`
+      : `Only ${Math.round(overlapRatio * 100)}% keyword overlap with context`;
+
+    // If keyword overlap is insufficient, use character bigram similarity as fallback
+    if (!supported) {
+      const bigramScore = this.diceCoefficient(
+        this.getBigrams(statementLower),
+        this.getBigrams(contextLower),
+      );
+      if (bigramScore >= 0.45) {
+        supported = true;
+        reasoning = `Character bigram similarity (${Math.round(bigramScore * 100)}%) with context`;
+      }
+    }
 
     return {
       statement,
       supported,
-      reasoning: supported
-        ? `${Math.round(overlapRatio * 100)}% keyword overlap with context`
-        : `Only ${Math.round(overlapRatio * 100)}% keyword overlap with context`,
+      reasoning,
     };
   }
 
@@ -262,6 +292,33 @@ export class FaithfulnessScorer {
 
     // Extract words, filter stop words and short words
     return text.match(/[a-z]+/g)?.filter((word) => word.length > 2 && !stopWords.has(word)) ?? [];
+  }
+
+  /**
+   * Get character bigrams from text
+   */
+  private getBigrams(text: string): Set<string> {
+    const bigrams = new Set<string>();
+    for (let i = 0; i < text.length - 1; i++) {
+      bigrams.add(text.substring(i, i + 2));
+    }
+    return bigrams;
+  }
+
+  /**
+   * Calculate Dice coefficient between two sets of bigrams
+   */
+  private diceCoefficient(bigrams1: Set<string>, bigrams2: Set<string>): number {
+    if (bigrams1.size === 0 || bigrams2.size === 0) {
+      return 0;
+    }
+    let intersection = 0;
+    for (const bigram of bigrams1) {
+      if (bigrams2.has(bigram)) {
+        intersection++;
+      }
+    }
+    return (2 * intersection) / (bigrams1.size + bigrams2.size);
   }
 
   /**

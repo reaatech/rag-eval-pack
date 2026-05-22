@@ -62,7 +62,7 @@ export class ContextPrecisionScorer {
 
     // Check keyword overlap with ground truth
     const groundTruthWords = this.getSignificantWords(groundTruthLower);
-    const chunkWords = new Set(this.getWords(chunkLower));
+    const chunkWords = new Set(this.getSignificantWords(chunkLower));
 
     if (groundTruthWords.length === 0) {
       return 0.5;
@@ -276,7 +276,22 @@ export class ContextPrecisionScorer {
       'those',
     ]);
 
-    return this.getWords(text).filter((word) => word.length > 2 && !stopWords.has(word));
+    const words = this.getWords(text);
+    const numbers = text.match(/\d{2,}/g) ?? [];
+    const allTokens = [...words, ...numbers].map((w) => this.normalizeWord(w));
+    return allTokens.filter((word) => word.length > 2 && !stopWords.has(word));
+  }
+
+  /**
+   * Normalize a word by stripping common English inflections
+   */
+  private normalizeWord(word: string): string {
+    const len = word.length;
+    if (len <= 3) return word;
+    if (word.endsWith('ing') && len > 4) return word.slice(0, -3);
+    if (word.endsWith('ed') && len > 4) return word.slice(0, -2);
+    if (word.endsWith('s') && !word.endsWith('ss') && len > 3) return word.slice(0, -1);
+    return word;
   }
 
   /**

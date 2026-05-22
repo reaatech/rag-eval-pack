@@ -83,9 +83,9 @@ export class ContextRecallScorer {
     // Extract noun phrases and key information
     // Look for patterns like "X is Y", "X requires Y", etc.
     const patterns = [
-      /(\w[\w\s]*?)\s+(is|are|was|were|means|requires|needs|involves)\s+(\w[\w\s]*?)[.!?,;]*/gi,
-      /(\w[\w\s]*?)\s+(within|after|before|during|until)\s+(\w[\w\s]*?)[.!?,;]*/gi,
-      /(\w[\w\s]*?)\s+(at|in|on|by|with|from|to)\s+(\w[\w\s]*?)[.!?,;]*/gi,
+      /(\w[\w\s]*)\s+(is|are|was|were|means|requires|needs|involves)\s+(\w[\w\s]*)[.!?,;]*/gi,
+      /(\w[\w\s]*)\s+(within|after|before|during|until)\s+(\w[\w\s]*)[.!?,;]*/gi,
+      /(\w[\w\s]*)\s+(at|in|on|by|with|from|to)\s+(\w[\w\s]*)[.!?,;]*/gi,
     ];
 
     for (const pattern of patterns) {
@@ -135,7 +135,7 @@ export class ContextRecallScorer {
 
     // Check keyword overlap
     const factWords = this.getSignificantWords(factLower);
-    const contextWords = new Set(this.getWords(contextLower));
+    const contextWords = new Set(this.getSignificantWords(contextLower));
 
     if (factWords.length === 0) {
       return {
@@ -333,7 +333,22 @@ export class ContextRecallScorer {
       'those',
     ]);
 
-    return this.getWords(text).filter((word) => word.length > 2 && !stopWords.has(word));
+    const words = this.getWords(text);
+    const numbers = text.match(/\d{2,}/g) ?? [];
+    const allTokens = [...words, ...numbers].map((w) => this.normalizeWord(w));
+    return allTokens.filter((word) => word.length > 2 && !stopWords.has(word));
+  }
+
+  /**
+   * Normalize a word by stripping common English inflections
+   */
+  private normalizeWord(word: string): string {
+    const len = word.length;
+    if (len <= 3) return word;
+    if (word.endsWith('ing') && len > 4) return word.slice(0, -3);
+    if (word.endsWith('ed') && len > 4) return word.slice(0, -2);
+    if (word.endsWith('s') && !word.endsWith('ss') && len > 3) return word.slice(0, -1);
+    return word;
   }
 
   /**

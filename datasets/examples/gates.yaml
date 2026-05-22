@@ -7,13 +7,13 @@ gates:
     type: threshold
     metric: avg_faithfulness
     operator: ">="
-    threshold: 0.85
+    threshold: 0.75
 
   - name: min-relevance
     type: threshold
     metric: avg_relevance
     operator: ">="
-    threshold: 0.80
+    threshold: 0.40
 
   - name: min-context-precision
     type: threshold

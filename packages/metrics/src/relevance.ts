@@ -91,7 +91,7 @@ export class RelevanceScorer {
     if (!isQuestion) {
       // For non-questions, use simple keyword matching
       const queryWords = this.getSignificantWords(queryLower);
-      const answerWords = new Set(this.getWords(answerLower));
+      const answerWords = new Set(this.getWords(answerLower).map((w) => this.normalizeWord(w)));
       const matchedWords = queryWords.filter((w) => answerWords.has(w));
       return queryWords.length > 0 ? matchedWords.length / queryWords.length : 0.5;
     }
@@ -104,7 +104,7 @@ export class RelevanceScorer {
     }
 
     // Check how many query topics are addressed in the answer
-    const answerWords = new Set(this.getWords(answerLower));
+    const answerWords = new Set(this.getWords(answerLower).map((w) => this.normalizeWord(w)));
     const matchedTopics = queryWords.filter((w) => answerWords.has(w));
 
     // Also check for synonyms/common responses
@@ -255,7 +255,22 @@ export class RelevanceScorer {
       'those',
     ]);
 
-    return this.getWords(text).filter((word) => word.length > 2 && !stopWords.has(word));
+    const words = this.getWords(text);
+    const numbers = text.match(/\d{2,}/g) ?? [];
+    const allTokens = [...words, ...numbers].map((w) => this.normalizeWord(w));
+    return allTokens.filter((word) => word.length > 2 && !stopWords.has(word));
+  }
+
+  /**
+   * Normalize a word by stripping common English inflections
+   */
+  private normalizeWord(word: string): string {
+    const len = word.length;
+    if (len <= 3) return word;
+    if (word.endsWith('ing') && len > 4) return word.slice(0, -3);
+    if (word.endsWith('ed') && len > 4) return word.slice(0, -2);
+    if (word.endsWith('s') && !word.endsWith('ss') && len > 3) return word.slice(0, -1);
+    return word;
   }
 
   /**
@@ -291,7 +306,7 @@ export class RelevanceScorer {
    * Check if text contains action words (indicating a helpful response)
    */
   private containsActionWords(text: string): boolean {
-    const actionWords = [
+    const actionWords = new Set([
       'can',
       'could',
       'should',
@@ -317,10 +332,10 @@ export class RelevanceScorer {
       'submit',
       'request',
       'follow',
-    ];
+    ]);
 
-    const words = text.split(/\s+/);
-    return actionWords.some((action) => words.includes(action));
+    const words = this.getWords(text);
+    return words.some((word) => actionWords.has(word));
   }
 
   /**

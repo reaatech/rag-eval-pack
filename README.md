@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/reaatech/rag-eval-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/reaatech/rag-eval-pack/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue)](https://www.typescriptlang.org/)
 
 > Production-grade RAG evaluation toolkit with LLM-as-judge, cost accounting, and CI/CD regression gates.
 
@@ -86,7 +86,7 @@ import { EvaluationSuite } from "@reaatech/rag-eval-suite";
 
 const suite = new EvaluationSuite({
   metrics: ["faithfulness", "relevance", "context_precision", "context_recall"],
-  judge: { model: "claude-opus" },
+  judge: { model: "claude-opus-4-7" },
   gates: [
     { name: "min-faithfulness", type: "threshold", metric: "avg_faithfulness", operator: ">=", threshold: 0.85 },
   ],

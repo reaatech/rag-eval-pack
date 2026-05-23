@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * rag-eval-pack MCP Server
  *
@@ -65,12 +63,4 @@ export async function startMcpServer(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('rag-eval-pack MCP server running on stdio');
-}
-
-const isDirectExecution = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
-if (isDirectExecution) {
-  startMcpServer().catch((error) => {
-    console.error('Fatal error:', error);
-    process.exit(1);
-  });
 }

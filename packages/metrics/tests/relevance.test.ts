@@ -68,8 +68,7 @@ describe('RelevanceScorer', () => {
       const scorer = new RelevanceScorer();
       const result = await scorer.score(makeSample());
 
-      const decimals = (s: number) =>
-        s.toString().includes('.') ? s.toString().split('.')[1]!.length : 0;
+      const decimals = (s: number) => (s.toString().split('.')[1] ?? '').length;
       expect(decimals(result.score)).toBeLessThanOrEqual(3);
       expect(decimals(result.semantic_similarity ?? 0)).toBeLessThanOrEqual(3);
       expect(decimals(result.intent_score ?? 0)).toBeLessThanOrEqual(3);
@@ -181,8 +180,7 @@ describe('RelevanceScorer', () => {
       const result = await scorer.score(
         makeSample({
           query: 'What is refund policy help support?',
-          generated_answer:
-            'The refund policy allows returns. Please contact support for help.',
+          generated_answer: 'The refund policy allows returns. Please contact support for help.',
         }),
       );
 

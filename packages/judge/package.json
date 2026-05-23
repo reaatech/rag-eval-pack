@@ -14,6 +14,10 @@
     "url": "https://github.com/reaatech/rag-eval-pack/issues"
   },
   "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -37,14 +41,30 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.0",
-    "@google/generative-ai": "^0.21.0",
     "@reaatech/rag-eval-core": "workspace:*",
-    "@reaatech/rag-eval-cost": "workspace:*",
-    "openai": "^6.35.0"
+    "@reaatech/rag-eval-cost": "workspace:*"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.32.0",
+    "@google/generative-ai": ">=0.21.0",
+    "openai": ">=6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "@google/generative-ai": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
+    "@google/generative-ai": "^0.21.0",
     "@types/node": "^25.6.0",
+    "openai": "^6.35.0",
     "tsup": "^8.4.0",
     "typescript": "^6.0.3",
     "vitest": "^3.1.1"

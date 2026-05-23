@@ -5,11 +5,7 @@ import { describe, expect, it } from 'vitest';
 function makeSample(overrides: Partial<EvaluationSample> = {}): EvaluationSample {
   return {
     query: 'What is the refund policy?',
-    context: [
-      'Refunds within 14 days.',
-      'Contact support for help.',
-      'Shipping takes 5-7 days.',
-    ],
+    context: ['Refunds within 14 days.', 'Contact support for help.', 'Shipping takes 5-7 days.'],
     ground_truth: 'Refunds must be requested within 14 days.',
     generated_answer: '',
     ...overrides,
@@ -75,7 +71,7 @@ describe('ContextPrecisionScorer', () => {
       const result = await scorer.score(makeSample());
 
       const decimals = (s: number) =>
-        s.toString().includes('.') ? s.toString().split('.')[1]!.length : 0;
+        s.toString().includes('.') ? s.toString().split('.')[1]?.length : 0;
       expect(decimals(result.score)).toBeLessThanOrEqual(3);
       expect(decimals(result.map)).toBeLessThanOrEqual(3);
       expect(decimals(result.ndcg)).toBeLessThanOrEqual(3);
@@ -175,11 +171,7 @@ describe('ContextPrecisionScorer', () => {
       const scorer = new ContextPrecisionScorer();
       const result = await scorer.score(
         makeSample({
-          context: [
-            'Refunds within 14 days.',
-            'Weather is nice.',
-            'Policy requires contact.',
-          ],
+          context: ['Refunds within 14 days.', 'Weather is nice.', 'Policy requires contact.'],
           ground_truth: 'Refunds within 14 days by contacting support.',
         }),
       );
@@ -233,7 +225,11 @@ describe('ContextPrecisionScorer', () => {
       const scorer = new ContextPrecisionScorer();
       const result = await scorer.score(
         makeSample({
-          context: ['Policy update available.', 'Customer refund support contact', 'Full refund policy details'],
+          context: [
+            'Policy update available.',
+            'Customer refund support contact',
+            'Full refund policy details',
+          ],
           ground_truth: 'Refund policy support contact.',
         }),
       );

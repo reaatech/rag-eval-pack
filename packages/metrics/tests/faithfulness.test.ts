@@ -127,7 +127,7 @@ describe('FaithfulnessScorer', () => {
       );
 
       const scoreStr = result.score.toString();
-      const decimalPlaces = scoreStr.includes('.') ? scoreStr.split('.')[1]!.length : 0;
+      const decimalPlaces = scoreStr.includes('.') ? scoreStr.split('.')[1]?.length : 0;
       expect(decimalPlaces).toBeLessThanOrEqual(3);
     });
   });

@@ -25,8 +25,7 @@ describe('ContextRecallScorer', () => {
             'Refunds are processed within 14 days of purchase.',
             'Contact support@example.com for refund requests.',
           ],
-          ground_truth:
-            'Refunds must be requested within 14 days by contacting support.',
+          ground_truth: 'Refunds must be requested within 14 days by contacting support.',
         }),
       );
 
@@ -60,8 +59,7 @@ describe('ContextRecallScorer', () => {
       const result = await scorer.score(
         makeSample({
           context: ['Refunds must be requested within 14 days by contacting support.'],
-          ground_truth:
-            'Refunds must be requested within 14 days by contacting support.',
+          ground_truth: 'Refunds must be requested within 14 days by contacting support.',
         }),
       );
 
@@ -92,7 +90,7 @@ describe('ContextRecallScorer', () => {
       );
 
       expect(result.facts).toBeDefined();
-      expect(result.facts!.length).toBe(result.total_facts);
+      expect(result.facts?.length).toBe(result.total_facts);
     });
   });
 
@@ -304,8 +302,7 @@ describe('ContextRecallScorer', () => {
       const result = await scorer.score(
         makeSample({
           context: ['Refunds must be requested within 14 days by contacting support.'],
-          ground_truth:
-            'Refunds must be requested within 14 days by contacting support.',
+          ground_truth: 'Refunds must be requested within 14 days by contacting support.',
         }),
       );
 

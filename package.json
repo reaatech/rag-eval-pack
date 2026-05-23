@@ -5,7 +5,7 @@
   "description": "Evaluation toolkit for RAG (Retrieval-Augmented Generation) systems \u2014 monorepo of composable metrics, judges, gates, and CLI tools",
   "type": "module",
   "scripts": {
-    "build": "turbo run build",
+    "build": "pnpm install && turbo run build",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "lint": "biome check .",

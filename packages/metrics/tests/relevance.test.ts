@@ -1,4 +1,4 @@
-import type { EvaluationSample } from '@reaatech/rag-eval-core';
+import type { EmbeddingProvider, EvaluationSample } from '@reaatech/rag-eval-core';
 import { RelevanceScorer } from '@reaatech/rag-eval-metrics';
 import { describe, expect, it } from 'vitest';
 
@@ -24,7 +24,7 @@ describe('RelevanceScorer', () => {
       );
 
       expect(result.score).toBeGreaterThan(0.5);
-      expect(result.semantic_similarity).toBeDefined();
+      expect(result.lexical_similarity).toBeDefined();
       expect(result.intent_score).toBeDefined();
     });
 
@@ -49,7 +49,7 @@ describe('RelevanceScorer', () => {
         }),
       );
 
-      expect(result.semantic_similarity).toBe(1);
+      expect(result.lexical_similarity).toBe(1);
     });
 
     it('handles query that contains the answer verbatim', async () => {
@@ -61,7 +61,7 @@ describe('RelevanceScorer', () => {
         }),
       );
 
-      expect(result.semantic_similarity).toBe(1);
+      expect(result.lexical_similarity).toBe(1);
     });
 
     it('returns scores rounded to 3 decimal places', async () => {
@@ -71,8 +71,34 @@ describe('RelevanceScorer', () => {
       const decimals = (s: number) =>
         s.toString().includes('.') ? (s.toString().split('.')[1] ?? '').length : 0;
       expect(decimals(result.score)).toBeLessThanOrEqual(3);
-      expect(decimals(result.semantic_similarity ?? 0)).toBeLessThanOrEqual(3);
+      expect(decimals(result.lexical_similarity ?? 0)).toBeLessThanOrEqual(3);
       expect(decimals(result.intent_score ?? 0)).toBeLessThanOrEqual(3);
+    });
+  });
+
+  describe('with an embedding provider', () => {
+    it('populates semantic_similarity from embeddings', async () => {
+      const identity: EmbeddingProvider = {
+        embed: async (texts) => texts.map(() => [1, 0, 0]),
+      };
+      const scorer = new RelevanceScorer({ embeddingProvider: identity });
+      const result = await scorer.score(makeSample({ query: 'apple', generated_answer: 'orange' }));
+      // Identical vectors → cosine 1, regardless of lexical mismatch.
+      expect(result.semantic_similarity).toBe(1);
+      expect(result.lexical_similarity).toBeDefined();
+    });
+
+    it('still computes lexical_similarity alongside semantic', async () => {
+      const orthogonal: EmbeddingProvider = {
+        embed: async () => [
+          [1, 0],
+          [0, 1],
+        ],
+      };
+      const scorer = new RelevanceScorer({ embeddingProvider: orthogonal });
+      const result = await scorer.score(makeSample());
+      expect(result.semantic_similarity).toBe(0); // orthogonal vectors
+      expect(result.lexical_similarity).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -98,8 +124,8 @@ describe('RelevanceScorer', () => {
         }),
       );
 
-      expect(result.semantic_similarity).toBeGreaterThanOrEqual(0);
-      expect(result.semantic_similarity).toBeLessThanOrEqual(1);
+      expect(result.lexical_similarity).toBeGreaterThanOrEqual(0);
+      expect(result.lexical_similarity).toBeLessThanOrEqual(1);
     });
 
     it('handles empty query words', async () => {
@@ -111,7 +137,7 @@ describe('RelevanceScorer', () => {
         }),
       );
 
-      expect(result.semantic_similarity).toBeDefined();
+      expect(result.lexical_similarity).toBeDefined();
     });
   });
 
@@ -323,7 +349,7 @@ describe('RelevanceScorer', () => {
         }),
       );
 
-      expect(result.semantic_similarity).toBeDefined();
+      expect(result.lexical_similarity).toBeDefined();
     });
   });
 

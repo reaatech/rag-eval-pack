@@ -62,7 +62,8 @@ describe('Metrics', () => {
       const result = await scorer.score(sample);
       expect(result.score).toBeGreaterThanOrEqual(0);
       expect(result.score).toBeLessThanOrEqual(1);
-      expect(result.semantic_similarity).toBeDefined();
+      expect(result.lexical_similarity).toBeDefined();
+      expect(result.semantic_similarity).toBeUndefined();
       expect(result.intent_score).toBeDefined();
     });
 

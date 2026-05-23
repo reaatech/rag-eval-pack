@@ -12,6 +12,7 @@ export const EvaluationSampleSchema = z.object({
   ground_truth: z.string().min(1, 'Ground truth cannot be empty'),
   generated_answer: z.string().min(1, 'Generated answer cannot be empty'),
   retrieved_chunk_ids: z.array(z.string()).optional(),
+  relevant_chunk_ids: z.array(z.string()).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -36,8 +37,28 @@ export const FaithfulnessResultSchema = z.object({
 /** Relevance result schema */
 export const RelevanceResultSchema = z.object({
   score: z.number().min(0).max(1),
+  lexical_similarity: z.number().min(0).max(1).optional(),
   semantic_similarity: z.number().min(0).max(1).optional(),
   intent_score: z.number().min(0).max(1).optional(),
+  explanation: z.string().optional(),
+});
+
+/** Retrieval ranking result schema */
+export const RetrievalResultSchema = z.object({
+  mrr: z.number().min(0).max(1),
+  ndcg: z.number().min(0).max(1),
+  precision_at_k: z.number().min(0).max(1),
+  recall_at_k: z.number().min(0).max(1),
+  hit_at_k: z.number().min(0).max(1),
+  k: z.number().min(0),
+  explanation: z.string().optional(),
+});
+
+/** Answer correctness result schema */
+export const AnswerCorrectnessResultSchema = z.object({
+  score: z.number().min(0).max(1),
+  lexical_similarity: z.number().min(0).max(1).optional(),
+  semantic_similarity: z.number().min(0).max(1).optional(),
   explanation: z.string().optional(),
 });
 
@@ -135,12 +156,16 @@ export const GateConfigSchema = z.object({
   baseline: z.string().optional(),
   allow_regression: z.boolean().optional(),
   min_improvement: z.number().optional(),
+  tolerance: z.number().min(0).optional(),
+  severity: z.enum(['warn', 'fail']).optional(),
 });
 
 /** Individual gate result schema */
 export const IndividualGateResultSchema = z.object({
   name: z.string(),
   passed: z.boolean(),
+  severity: z.enum(['warn', 'fail']).optional(),
+  warning: z.boolean().optional(),
   actual_value: z.number(),
   expected_value: z.number().optional(),
   baseline_diff: z.number().optional(),
@@ -161,6 +186,7 @@ export const GateResultSchema = z.object({
   passed: z.boolean(),
   gates: z.array(IndividualGateResultSchema),
   failures: z.array(GateFailureSchema),
+  warnings: z.array(GateFailureSchema).default([]),
   evaluated_at: z.string(),
 });
 
@@ -188,6 +214,9 @@ export const ConsensusConfigSchema = z.object({
 /** Judge configuration schema */
 export const JudgeConfigSchema = z.object({
   model: z.string().optional(),
+  provider: z.enum(['anthropic', 'openai', 'google', 'mock']).optional(),
+  base_url: z.string().optional(),
+  api_key: z.string().optional(),
   fallback_models: z.array(z.string()).optional(),
   calibration: CalibrationConfigSchema.optional(),
   consensus: ConsensusConfigSchema.optional(),

@@ -77,7 +77,7 @@ core ← metrics ← suite ← mcp-server, cli
 | Package | Role | Depends On | Key Exports |
 |---------|------|------------|-------------|
 | `@reaatech/rag-eval-core` | Foundation types + Zod schemas | (leaf) | `EvaluationSample`, `EvalSuiteConfig`, `GateConfig`, `JudgeConfig`, `CostBreakdown`, schemas |
-| `@reaatech/rag-eval-metrics` | Heuristic metric scorers | core | `FaithfulnessScorer`, `RelevanceScorer`, `ContextPrecisionScorer`, `ContextRecallScorer`, `MetricsEngine` |
+| `@reaatech/rag-eval-metrics` | Metric scorers (lexical by default; semantic via an `EmbeddingProvider`) | core | `FaithfulnessScorer`, `RelevanceScorer`, `ContextPrecisionScorer`, `ContextRecallScorer`, `RetrievalScorer`, `AnswerCorrectnessScorer`, `MetricsEngine`, `text-utils` |
 | `@reaatech/rag-eval-cost` | Cost tracking infrastructure | core | `CostTracker`, `Pricing`, `BudgetManager`, `CostReporter` |
 | `@reaatech/rag-eval-judge` | LLM-as-judge | core, cost | `JudgeEngine`, `JudgeCalibrator`, `JudgeCostTracker`, prompts |
 | `@reaatech/rag-eval-gate` | Quality gates | core | `GateEngine`, `ThresholdGates`, `BaselineGates`, `CIIntegration` |
@@ -207,17 +207,19 @@ core ← metrics ← suite ← mcp-server, cli
 │  Input: { query, generated_answer }                                 │
 │                                                                      │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐  │
-│  │    Semantic     │    │    Intent       │    │    Score        │  │
-│  │    Similarity   │    │    Coverage     │    │   Aggregation   │  │
-│  │                 │    │                 │    │                 │  │
-│  │ - Embedding-    │    │ - Decompose     │    │ - Weighted      │  │
-│  │   based         │    │   query into    │    │   combination   │  │
-│  │   similarity    │    │   intents       │    │ - Semantic      │  │
-│  │   (cosine)      │    │ - Check answer  │    │   similarity +  │  │
-│  │                 │    │   coverage      │    │   intent score  │  │
+│  │   Similarity    │    │    Intent       │    │    Score        │  │
+│  │                 │    │    Coverage     │    │   Aggregation   │  │
+│  │ - Lexical       │    │                 │    │                 │  │
+│  │   (word/bigram) │    │ - Decompose     │    │ - Weighted      │  │
+│  │   by default    │    │   query into    │    │   combination   │  │
+│  │ - Semantic      │    │   intents       │    │ - Similarity +  │  │
+│  │   (cosine) when │    │ - Check answer  │    │   intent score  │  │
+│  │   embeddings    │    │   coverage      │    │                 │  │
+│  │   supplied      │    │                 │    │                 │  │
 │  └─────────────────┘    └─────────────────┘    └─────────────────┘  │
 │                                                                      │
-│  Output: { score, semantic_similarity, intent_score, intents }      │
+│  Output: { score, lexical_similarity, intent_score,                 │
+│            semantic_similarity? }                                   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -265,6 +267,40 @@ core ← metrics ← suite ← mcp-server, cli
 │  └─────────────────┘    └─────────────────┘    └─────────────────┘  │
 │                                                                      │
 │  Output: { score, total_facts, covered_facts }                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Retrieval Scorer
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                       Retrieval Scorer                               │
+│  Package: @reaatech/rag-eval-metrics                                 │
+│                                                                      │
+│  Input: { retrieved_chunk_ids[], relevant_chunk_ids[], k? }         │
+│                                                                      │
+│  Ranking metrics over the retrieved order vs. the relevant set:      │
+│  - MRR (reciprocal rank of first relevant chunk)                     │
+│  - nDCG (binary-relevance, log-discounted)                           │
+│  - precision@k, recall@k, hit@k                                      │
+│                                                                      │
+│  Output: { mrr, ndcg, precision_at_k, recall_at_k, hit_at_k, k }    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Answer Correctness Scorer
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                  Answer Correctness Scorer                           │
+│  Package: @reaatech/rag-eval-metrics                                 │
+│                                                                      │
+│  Input: { generated_answer, ground_truth }                          │
+│                                                                      │
+│  - Lexical: token F1 + character bigram Dice (default)               │
+│  - Semantic: cosine of embeddings when an EmbeddingProvider is set   │
+│                                                                      │
+│  Output: { score, lexical_similarity, semantic_similarity? }        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -494,7 +530,6 @@ All logs are structured JSON with standard fields:
 ## References
 
 - **AGENTS.md** — Agent development guide
-- **DEV_PLAN.md** — Development checklist
 - **README.md** — Quick start and overview
 - **datasets/examples/** — Example evaluation datasets
 - **MCP Specification** — https://modelcontextprotocol.io/

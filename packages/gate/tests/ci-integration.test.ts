@@ -26,6 +26,7 @@ describe('CIIntegration', () => {
         difference: -0.1,
       },
     ],
+    warnings: [],
     evaluated_at: '2024-01-01T00:00:00Z',
   };
 
@@ -88,6 +89,7 @@ describe('CIIntegration', () => {
           { name: 'relevance', passed: true, actual_value: 0.85, message: 'passed' },
         ],
         failures: [],
+        warnings: [],
         evaluated_at: mockGateResult.evaluated_at,
       };
       const xml = ci.generateJUnitXml(passedResult);

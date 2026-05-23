@@ -43,19 +43,29 @@ export class GateEngine {
     const baselineToUse = baseline ?? this.baselineResults;
     const individualResults: IndividualGateResult[] = [];
     const failures: GateFailure[] = [];
+    const warnings: GateFailure[] = [];
 
     for (const gate of this.gates) {
       const result = this.evaluateGate(gate, results, baselineToUse);
+      const severity = gate.severity ?? 'fail';
+      result.severity = severity;
       individualResults.push(result);
 
       if (!result.passed) {
-        failures.push({
+        const failure: GateFailure = {
           gate_name: gate.name,
           metric: gate.metric,
           actual: result.actual_value,
           expected: result.expected_value ?? 0,
           difference: result.actual_value - (result.expected_value ?? 0),
-        });
+        };
+        // `warn`-severity gates record a warning but don't fail the run.
+        if (severity === 'warn') {
+          result.warning = true;
+          warnings.push(failure);
+        } else {
+          failures.push(failure);
+        }
       }
     }
 
@@ -63,6 +73,7 @@ export class GateEngine {
       passed: failures.length === 0,
       gates: individualResults,
       failures,
+      warnings,
       evaluated_at: new Date().toISOString(),
     };
   }
@@ -157,21 +168,29 @@ export class GateEngine {
     const diff = candidateValue - baselineValue;
     const allowRegression = gate.allow_regression ?? false;
     const minImprovement = gate.min_improvement ?? 0;
+    const tolerance = gate.tolerance ?? 0;
+    // A diff at or above this threshold passes; the tolerance band absorbs
+    // small regressions (noise) so the gate doesn't trip on sampling jitter.
+    const requiredDiff = minImprovement - tolerance;
 
     let passed = false;
     let message = '';
+    const transition = `${gate.metric}: ${baselineValue.toFixed(3)} -> ${candidateValue.toFixed(3)}`;
+    const within = tolerance > 0 ? ` (tolerance: ${tolerance.toFixed(3)})` : '';
 
     if (allowRegression) {
       // Any change is allowed
       passed = true;
-      message = `${gate.metric}: ${baselineValue.toFixed(3)} -> ${candidateValue.toFixed(3)} (diff: ${diff.toFixed(3)})`;
-    } else if (diff >= minImprovement) {
-      // Must improve by at least minImprovement
+      message = `${transition} (diff: ${diff.toFixed(3)})`;
+    } else if (diff >= requiredDiff) {
       passed = true;
-      message = `${gate.metric}: ${baselineValue.toFixed(3)} -> ${candidateValue.toFixed(3)} (improved by ${diff.toFixed(3)})`;
+      message =
+        diff >= minImprovement
+          ? `${transition} (improved by ${diff.toFixed(3)})`
+          : `${transition} (within tolerance: ${diff.toFixed(3)})${within}`;
     } else {
       passed = false;
-      message = `${gate.metric}: ${baselineValue.toFixed(3)} -> ${candidateValue.toFixed(3)} (regression of ${Math.abs(diff).toFixed(3)}, minimum improvement required: ${minImprovement})`;
+      message = `${transition} (regression of ${Math.abs(diff).toFixed(3)}, minimum improvement required: ${minImprovement}${within})`;
     }
 
     return {

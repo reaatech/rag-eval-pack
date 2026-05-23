@@ -10,10 +10,11 @@ This monorepo provides a composable suite of packages for evaluating Retrieval-A
 
 ## Features
 
-- **Four evaluation metrics** — faithfulness, relevance, context precision, and context recall with heuristic scorers
-- **LLM-as-judge** — multi-provider judging (Anthropic, OpenAI, Google) with calibration and consensus voting
+- **Generation metrics** — faithfulness, relevance, and answer-correctness with fast lexical scorers; supply an `EmbeddingProvider` for paraphrase-aware semantic scoring
+- **Retrieval metrics** — context precision/recall plus ranking metrics (MRR, nDCG, precision/recall/hit@k) from retrieved vs. relevant chunk IDs
+- **LLM-as-judge** — multi-provider judging (Anthropic, OpenAI, Google, and any OpenAI-compatible gateway or local model) with calibration, consensus voting, and agreement-based confidence
 - **Cost accounting** — per-sample and per-run token tracking with budget enforcement and alert thresholds
-- **Quality gates** — threshold and baseline-comparison gates with formatted CI output and exit codes
+- **Quality gates** — threshold and baseline-comparison gates with noise-tolerance bands, `warn`/`fail` severity, and formatted CI output with exit codes
 - **MCP server** — three-layer tool API (`judge.*`, `suite.*`, `gate.*`) for agent-driven evaluation
 - **Dataset management** — multi-format loading, Zod validation, synthetic generation, and version tracking
 - **Observability** — structured Pino logging, OpenTelemetry tracing, and Prometheus-compatible metrics
@@ -111,12 +112,41 @@ rag-eval-pack report --results results.json --output report.md
 
 See [`datasets/examples/`](./datasets/examples/) for sample datasets and configuration files.
 
+## Scoring modes
+
+Each generation metric can run at three levels of fidelity and cost — pick per use case:
+
+| Mode | How it works | Cost | Catches paraphrase? |
+| ---- | ------------ | ---- | ------------------- |
+| **Lexical** (default) | Word/character overlap + intent heuristics. Deterministic, no network, no key. | Free | No — surface form only |
+| **Semantic** | Cosine similarity of embeddings via an `EmbeddingProvider` you supply. | Embedding API cost | Yes |
+| **LLM judge** | An LLM rates the sample with calibration and optional consensus. | Token cost | Yes, with reasoning |
+
+Lexical scoring is reported as `lexical_similarity`; `semantic_similarity` is populated only when an embedding provider is configured. Use lexical for fast pre-commit smoke checks, semantic for paraphrase-sensitive metrics, and the judge for the final quality bar.
+
+```typescript
+import { RelevanceScorer } from "@reaatech/rag-eval-metrics";
+
+const scorer = new RelevanceScorer({
+  embeddingProvider: { embed: async (texts) => myEmbedAPI(texts) },
+});
+```
+
+Point the judge at any OpenAI-compatible gateway or local model via explicit config:
+
+```typescript
+const suite = new EvaluationSuite({
+  metrics: ["faithfulness", "relevance"],
+  judge: { provider: "openai", base_url: "http://localhost:11434/v1", model: "llama3.1" },
+});
+```
+
 ## Packages
 
 | Package | Description |
 | ------- | ----------- |
 | [`@reaatech/rag-eval-core`](./packages/core) | Canonical types, Zod schemas, and domain models |
-| [`@reaatech/rag-eval-metrics`](./packages/metrics) | Heuristic metric scorers (faithfulness, relevance, precision, recall) |
+| [`@reaatech/rag-eval-metrics`](./packages/metrics) | Metric scorers: faithfulness, relevance, context precision/recall, retrieval ranking, and answer correctness |
 | [`@reaatech/rag-eval-judge`](./packages/judge) | LLM-as-judge with calibration, consensus, and cost tracking |
 | [`@reaatech/rag-eval-cost`](./packages/cost) | Pricing, budgeting, and cost reporting |
 | [`@reaatech/rag-eval-gate`](./packages/gate) | Quality gates and CI regression checks |
@@ -131,7 +161,6 @@ See [`datasets/examples/`](./datasets/examples/) for sample datasets and configu
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — System design, package relationships, and data flows
 - [`AGENTS.md`](./AGENTS.md) — Coding conventions, tool architecture, and development guidelines
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — Contribution workflow and release process
-- [`DEV_PLAN.md`](./DEV_PLAN.md) — Development checklist and roadmap
 
 ## License
 

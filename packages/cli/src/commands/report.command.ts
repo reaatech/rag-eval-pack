@@ -31,7 +31,13 @@ export function createReportCommand(): Command {
         report = generateBasicMarkdownReport(results);
       }
     } else if (options.format === 'junit') {
-      const gateResult = results.gate_result || { passed: true, gates: [], failures: [] };
+      const gateResult = results.gate_result || {
+        passed: true,
+        gates: [],
+        failures: [],
+        warnings: [],
+        evaluated_at: new Date().toISOString(),
+      };
       report = ci.generateJUnitXml(gateResult, results);
     } else {
       report = JSON.stringify(results, null, 2);

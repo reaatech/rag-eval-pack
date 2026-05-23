@@ -31,6 +31,48 @@ describe('GateEngine', () => {
     ...overrides,
   });
 
+  describe('gate severity', () => {
+    it('records a warning instead of failing for warn-severity gates', () => {
+      engine.loadGates([
+        {
+          name: 'soft-faithfulness',
+          type: 'threshold',
+          metric: 'avg_faithfulness',
+          operator: '>=',
+          threshold: 0.9, // 0.87 < 0.9 → unsatisfied
+          severity: 'warn',
+        },
+      ]);
+
+      const gateResult = engine.evaluate(createMockResults());
+
+      expect(gateResult.passed).toBe(true); // warn does not fail the run
+      expect(gateResult.failures).toHaveLength(0);
+      expect(gateResult.warnings).toHaveLength(1);
+      expect(gateResult.warnings[0]?.gate_name).toBe('soft-faithfulness');
+      expect(gateResult.gates[0]?.warning).toBe(true);
+      expect(gateResult.gates[0]?.severity).toBe('warn');
+    });
+
+    it('still fails the run for fail-severity gates (default)', () => {
+      engine.loadGates([
+        {
+          name: 'hard-faithfulness',
+          type: 'threshold',
+          metric: 'avg_faithfulness',
+          operator: '>=',
+          threshold: 0.9,
+        },
+      ]);
+
+      const gateResult = engine.evaluate(createMockResults());
+
+      expect(gateResult.passed).toBe(false);
+      expect(gateResult.failures).toHaveLength(1);
+      expect(gateResult.warnings).toHaveLength(0);
+    });
+  });
+
   describe('threshold gates', () => {
     it('should pass when metric meets threshold', () => {
       engine.loadGates([

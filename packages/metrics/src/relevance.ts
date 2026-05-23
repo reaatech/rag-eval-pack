@@ -1,33 +1,70 @@
-import type { EvaluationSample, RelevanceResult } from '@reaatech/rag-eval-core';
+import type { EmbeddingProvider, EvaluationSample, RelevanceResult } from '@reaatech/rag-eval-core';
+import {
+  cosineSimilarity,
+  diceCoefficient,
+  getBigrams,
+  getSignificantWords,
+  getWords,
+  normalizeWord,
+} from './text-utils.js';
+
+/** Options for the relevance scorer. */
+export interface RelevanceScorerOptions {
+  /**
+   * Optional embedding provider. When supplied, true semantic similarity
+   * (cosine of embeddings) is computed and used as the primary signal, and
+   * exposed as `semantic_similarity`. Without it, scoring is purely lexical
+   * and only `lexical_similarity` is populated.
+   */
+  embeddingProvider?: EmbeddingProvider;
+}
 
 /**
  * Relevance Scorer
  *
- * Measures whether a RAG system's generated answer actually addresses the user's query.
- * Assesses semantic similarity and intent coverage.
+ * Measures whether a RAG system's generated answer actually addresses the
+ * user's query. By default this uses lexical heuristics (word/character
+ * overlap + intent coverage) — fast and dependency-free, but blind to
+ * paraphrase. Supply an `embeddingProvider` for true semantic similarity.
  */
 export class RelevanceScorer {
+  private embeddingProvider?: EmbeddingProvider;
+
+  constructor(options: RelevanceScorerOptions = {}) {
+    this.embeddingProvider = options.embeddingProvider;
+  }
+
   /**
    * Score relevance for a single sample
    */
   async score(sample: EvaluationSample): Promise<RelevanceResult> {
     const { query, generated_answer } = sample;
 
-    // Calculate semantic similarity
-    const semanticSimilarity = this.calculateSemanticSimilarity(query, generated_answer);
+    // Lexical similarity is always computed (cheap, deterministic).
+    const lexicalSimilarity = this.calculateLexicalSimilarity(query, generated_answer);
 
-    // Calculate intent coverage
+    // Semantic similarity only when an embedding provider is configured.
+    const semanticSimilarity = this.embeddingProvider
+      ? await this.calculateSemanticSimilarity(query, generated_answer)
+      : undefined;
+
+    // Intent coverage: does the answer address the parts of the query?
     const intentScore = this.calculateIntentCoverage(query, generated_answer);
 
-    // Weighted combination: 60% semantic, 40% intent
-    const score = Math.round((semanticSimilarity * 0.6 + intentScore * 0.4) * 1000) / 1000;
+    // Prefer the semantic signal when available, else fall back to lexical.
+    const primarySimilarity = semanticSimilarity ?? lexicalSimilarity;
+    const score = Math.round((primarySimilarity * 0.6 + intentScore * 0.4) * 1000) / 1000;
 
-    return {
+    const result: RelevanceResult = {
       score,
-      semantic_similarity: Math.round(semanticSimilarity * 1000) / 1000,
+      lexical_similarity: Math.round(lexicalSimilarity * 1000) / 1000,
       intent_score: Math.round(intentScore * 1000) / 1000,
-      explanation: this.generateExplanation(score, semanticSimilarity, intentScore),
+      explanation: this.generateExplanation(score, primarySimilarity, intentScore),
     };
+    if (semanticSimilarity !== undefined) {
+      result.semantic_similarity = Math.round(semanticSimilarity * 1000) / 1000;
+    }
+    return result;
   }
 
   /**
@@ -38,9 +75,21 @@ export class RelevanceScorer {
   }
 
   /**
-   * Calculate semantic similarity using word overlap and character n-gram similarity
+   * True semantic similarity via embeddings (cosine of query/answer vectors).
    */
-  private calculateSemanticSimilarity(query: string, answer: string): number {
+  private async calculateSemanticSimilarity(query: string, answer: string): Promise<number> {
+    if (!this.embeddingProvider) return 0;
+    const [queryVec, answerVec] = await this.embeddingProvider.embed([query, answer]);
+    if (!queryVec || !answerVec) return 0;
+    // Cosine can be negative; clamp to [0, 1] to stay on the metric scale.
+    return Math.max(0, Math.min(1, cosineSimilarity(queryVec, answerVec)));
+  }
+
+  /**
+   * Lexical similarity using word overlap (Jaccard) and character bigram
+   * similarity (Dice). Surface-form only — does not capture paraphrase.
+   */
+  private calculateLexicalSimilarity(query: string, answer: string): number {
     const queryLower = query.toLowerCase();
     const answerLower = answer.toLowerCase();
 
@@ -50,8 +99,8 @@ export class RelevanceScorer {
     }
 
     // Word-level Jaccard similarity
-    const queryWords = new Set(this.getWords(queryLower));
-    const answerWords = new Set(this.getWords(answerLower));
+    const queryWords = new Set(getWords(queryLower));
+    const answerWords = new Set(getWords(answerLower));
 
     const intersection = [...queryWords].filter((w) => answerWords.has(w));
     const union = new Set([...queryWords, ...answerWords]);
@@ -59,9 +108,9 @@ export class RelevanceScorer {
     const jaccard = union.size > 0 ? intersection.length / union.size : 0;
 
     // Character bigram similarity (Dice coefficient)
-    const queryBigrams = this.getBigrams(queryLower);
-    const answerBigrams = this.getBigrams(answerLower);
-    const bigramSimilarity = this.diceCoefficient(queryBigrams, answerBigrams);
+    const queryBigrams = getBigrams(queryLower);
+    const answerBigrams = getBigrams(answerLower);
+    const bigramSimilarity = diceCoefficient(queryBigrams, answerBigrams);
 
     // Weighted average of word and character similarity
     return jaccard * 0.4 + bigramSimilarity * 0.6;
@@ -90,21 +139,21 @@ export class RelevanceScorer {
 
     if (!isQuestion) {
       // For non-questions, use simple keyword matching
-      const queryWords = this.getSignificantWords(queryLower);
-      const answerWords = new Set(this.getWords(answerLower).map((w) => this.normalizeWord(w)));
+      const queryWords = getSignificantWords(queryLower);
+      const answerWords = new Set(getWords(answerLower).map((w) => normalizeWord(w)));
       const matchedWords = queryWords.filter((w) => answerWords.has(w));
       return queryWords.length > 0 ? matchedWords.length / queryWords.length : 0.5;
     }
 
     // Extract key topics/entities from query
-    const queryWords = this.getSignificantWords(queryLower);
+    const queryWords = getSignificantWords(queryLower);
 
     if (queryWords.length === 0) {
       return 0.5;
     }
 
     // Check how many query topics are addressed in the answer
-    const answerWords = new Set(this.getWords(answerLower).map((w) => this.normalizeWord(w)));
+    const answerWords = new Set(getWords(answerLower).map((w) => normalizeWord(w)));
     const matchedTopics = queryWords.filter((w) => answerWords.has(w));
 
     // Also check for synonyms/common responses
@@ -115,191 +164,6 @@ export class RelevanceScorer {
     const bonusScore = (hasActionWords ? 0.1 : 0) + (hasSpecificInfo ? 0.1 : 0);
 
     return Math.min(1, topicCoverage + bonusScore);
-  }
-
-  /**
-   * Get words from text
-   */
-  private getWords(text: string): string[] {
-    return text.match(/[a-z]+/g) ?? [];
-  }
-
-  /**
-   * Get significant words (filtering stop words)
-   */
-  private getSignificantWords(text: string): string[] {
-    const stopWords = new Set([
-      'a',
-      'an',
-      'the',
-      'is',
-      'are',
-      'was',
-      'were',
-      'be',
-      'been',
-      'being',
-      'have',
-      'has',
-      'had',
-      'do',
-      'does',
-      'did',
-      'will',
-      'would',
-      'could',
-      'should',
-      'may',
-      'might',
-      'shall',
-      'can',
-      'to',
-      'of',
-      'in',
-      'for',
-      'on',
-      'with',
-      'at',
-      'by',
-      'from',
-      'as',
-      'into',
-      'through',
-      'during',
-      'before',
-      'after',
-      'above',
-      'below',
-      'between',
-      'out',
-      'off',
-      'over',
-      'under',
-      'again',
-      'further',
-      'then',
-      'once',
-      'here',
-      'there',
-      'when',
-      'where',
-      'why',
-      'how',
-      'all',
-      'each',
-      'every',
-      'both',
-      'few',
-      'more',
-      'most',
-      'other',
-      'some',
-      'such',
-      'no',
-      'nor',
-      'not',
-      'only',
-      'own',
-      'same',
-      'so',
-      'than',
-      'too',
-      'very',
-      'just',
-      'and',
-      'but',
-      'or',
-      'if',
-      'while',
-      'because',
-      'until',
-      'about',
-      'against',
-      'up',
-      'down',
-      'it',
-      'its',
-      'i',
-      'me',
-      'my',
-      'myself',
-      'we',
-      'our',
-      'ours',
-      'ourselves',
-      'you',
-      'your',
-      'yours',
-      'yourself',
-      'yourselves',
-      'he',
-      'him',
-      'his',
-      'himself',
-      'she',
-      'her',
-      'hers',
-      'herself',
-      'they',
-      'them',
-      'their',
-      'theirs',
-      'themselves',
-      'what',
-      'which',
-      'who',
-      'whom',
-      'this',
-      'that',
-      'these',
-      'those',
-    ]);
-
-    const words = this.getWords(text);
-    const numbers = text.match(/\d{2,}/g) ?? [];
-    const allTokens = [...words, ...numbers].map((w) => this.normalizeWord(w));
-    return allTokens.filter((word) => word.length > 2 && !stopWords.has(word));
-  }
-
-  /**
-   * Normalize a word by stripping common English inflections
-   */
-  private normalizeWord(word: string): string {
-    const len = word.length;
-    if (len <= 3) return word;
-    if (word.endsWith('ing') && len > 4) return word.slice(0, -3);
-    if (word.endsWith('ed') && len > 4) return word.slice(0, -2);
-    if (word.endsWith('s') && !word.endsWith('ss') && len > 3) return word.slice(0, -1);
-    return word;
-  }
-
-  /**
-   * Get character bigrams from text
-   */
-  private getBigrams(text: string): Set<string> {
-    const bigrams = new Set<string>();
-    for (let i = 0; i < text.length - 1; i++) {
-      bigrams.add(text.substring(i, i + 2));
-    }
-    return bigrams;
-  }
-
-  /**
-   * Calculate Dice coefficient between two sets of bigrams
-   */
-  private diceCoefficient(bigrams1: Set<string>, bigrams2: Set<string>): number {
-    if (bigrams1.size === 0 || bigrams2.size === 0) {
-      return 0;
-    }
-
-    let intersection = 0;
-    for (const bigram of bigrams1) {
-      if (bigrams2.has(bigram)) {
-        intersection++;
-      }
-    }
-
-    return (2 * intersection) / (bigrams1.size + bigrams2.size);
   }
 
   /**
@@ -334,7 +198,7 @@ export class RelevanceScorer {
       'follow',
     ]);
 
-    const words = this.getWords(text);
+    const words = getWords(text);
     return words.some((word) => actionWords.has(word));
   }
 
@@ -343,18 +207,18 @@ export class RelevanceScorer {
    */
   private generateExplanation(
     score: number,
-    semanticSimilarity: number,
+    primarySimilarity: number,
     intentScore: number,
   ): string {
     if (score >= 0.8) {
-      return `Answer is highly relevant (semantic: ${semanticSimilarity.toFixed(2)}, intent: ${intentScore.toFixed(2)})`;
+      return `Answer is highly relevant (similarity: ${primarySimilarity.toFixed(2)}, intent: ${intentScore.toFixed(2)})`;
     }
     if (score >= 0.6) {
-      return `Answer is moderately relevant (semantic: ${semanticSimilarity.toFixed(2)}, intent: ${intentScore.toFixed(2)})`;
+      return `Answer is moderately relevant (similarity: ${primarySimilarity.toFixed(2)}, intent: ${intentScore.toFixed(2)})`;
     }
     if (score >= 0.4) {
-      return `Answer may not fully address the query (semantic: ${semanticSimilarity.toFixed(2)}, intent: ${intentScore.toFixed(2)})`;
+      return `Answer may not fully address the query (similarity: ${primarySimilarity.toFixed(2)}, intent: ${intentScore.toFixed(2)})`;
     }
-    return `Answer appears irrelevant to the query (semantic: ${semanticSimilarity.toFixed(2)}, intent: ${intentScore.toFixed(2)})`;
+    return `Answer appears irrelevant to the query (similarity: ${primarySimilarity.toFixed(2)}, intent: ${intentScore.toFixed(2)})`;
   }
 }

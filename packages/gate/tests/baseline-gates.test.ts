@@ -57,6 +57,36 @@ describe('BaselineGates', () => {
       expect(result.passed).toBe(true);
     });
 
+    it('should pass a small regression within the tolerance band', () => {
+      const gate: BaselineGateConfig = {
+        name: 'tolerant',
+        type: 'baseline-comparison',
+        metric: 'avg_faithfulness',
+        baseline: 'baseline-1',
+        allow_regression: false,
+        tolerance: 0.02,
+      };
+      // baseline 0.8, candidate 0.79 → diff -0.01, within tolerance 0.02
+      const result = gates.evaluate(gate, 0.79, mockBaselineResults);
+      expect(result.passed).toBe(true);
+      expect(result.message).toContain('tolerance');
+    });
+
+    it('should fail a regression larger than the tolerance band', () => {
+      const gate: BaselineGateConfig = {
+        name: 'tolerant',
+        type: 'baseline-comparison',
+        metric: 'avg_faithfulness',
+        baseline: 'baseline-1',
+        allow_regression: false,
+        tolerance: 0.02,
+      };
+      // baseline 0.8, candidate 0.75 → diff -0.05, exceeds tolerance 0.02
+      const result = gates.evaluate(gate, 0.75, mockBaselineResults);
+      expect(result.passed).toBe(false);
+      expect(result.message).toContain('regression');
+    });
+
     it('should fail when regressed without allow_regression', () => {
       const gate: BaselineGateConfig = {
         name: 'no-regression',

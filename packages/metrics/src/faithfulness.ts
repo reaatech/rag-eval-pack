@@ -3,6 +3,7 @@ import type {
   FaithfulnessResult,
   StatementSupport,
 } from '@reaatech/rag-eval-core';
+import { getSignificantWords, splitSentences } from './text-utils.js';
 
 /**
  * Faithfulness Scorer
@@ -52,11 +53,7 @@ export class FaithfulnessScorer {
    * Uses simple sentence splitting - can be enhanced with NLP
    */
   private extractStatements(text: string): string[] {
-    // Split by sentence-ending punctuation, filter empty strings
-    const sentences = text
-      .split(/(?<=[.!?])\s+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+    const sentences = splitSentences(text);
 
     // If no sentences found, treat the whole text as one statement
     if (sentences.length === 0 && text.trim().length > 0) {
@@ -87,8 +84,8 @@ export class FaithfulnessScorer {
     }
 
     // Check for keyword overlap
-    const statementWords = this.getSignificantWords(statementLower);
-    const contextWords = new Set(this.getSignificantWords(contextLower));
+    const statementWords = getSignificantWords(statementLower);
+    const contextWords = new Set(getSignificantWords(contextLower));
 
     if (statementWords.length === 0) {
       return {
@@ -111,172 +108,6 @@ export class FaithfulnessScorer {
         ? `${Math.round(overlapRatio * 100)}% keyword overlap with context`
         : `Only ${Math.round(overlapRatio * 100)}% keyword overlap with context`,
     };
-  }
-
-  /**
-   * Get significant words (nouns, verbs) from text
-   * Filters out stop words
-   */
-  private getSignificantWords(text: string): string[] {
-    const stopWords = new Set([
-      'a',
-      'an',
-      'the',
-      'is',
-      'are',
-      'was',
-      'were',
-      'be',
-      'been',
-      'being',
-      'have',
-      'has',
-      'had',
-      'do',
-      'does',
-      'did',
-      'will',
-      'would',
-      'could',
-      'should',
-      'may',
-      'might',
-      'shall',
-      'can',
-      'to',
-      'of',
-      'in',
-      'for',
-      'on',
-      'with',
-      'at',
-      'by',
-      'from',
-      'as',
-      'into',
-      'through',
-      'during',
-      'before',
-      'after',
-      'above',
-      'below',
-      'between',
-      'out',
-      'off',
-      'over',
-      'under',
-      'again',
-      'further',
-      'then',
-      'once',
-      'here',
-      'there',
-      'when',
-      'where',
-      'why',
-      'how',
-      'all',
-      'each',
-      'every',
-      'both',
-      'few',
-      'more',
-      'most',
-      'other',
-      'some',
-      'such',
-      'no',
-      'nor',
-      'not',
-      'only',
-      'own',
-      'same',
-      'so',
-      'than',
-      'too',
-      'very',
-      'just',
-      'and',
-      'but',
-      'or',
-      'if',
-      'while',
-      'because',
-      'until',
-      'about',
-      'against',
-      'up',
-      'down',
-      'it',
-      'its',
-      'i',
-      'me',
-      'my',
-      'myself',
-      'we',
-      'our',
-      'ours',
-      'ourselves',
-      'you',
-      'your',
-      'yours',
-      'yourself',
-      'yourselves',
-      'he',
-      'him',
-      'his',
-      'himself',
-      'she',
-      'her',
-      'hers',
-      'herself',
-      'they',
-      'them',
-      'their',
-      'theirs',
-      'themselves',
-      'what',
-      'which',
-      'who',
-      'whom',
-      'this',
-      'that',
-      'these',
-      'those',
-      'am',
-      'been',
-      'being',
-      'have',
-      'has',
-      'had',
-      'having',
-      'do',
-      'does',
-      'did',
-      'doing',
-      'would',
-      'should',
-      'could',
-      'ought',
-    ]);
-
-    // Extract words and numbers, filter stop words and short words
-    const words = text.match(/[a-z]+/g) ?? [];
-    const numbers = text.match(/\d{2,}/g) ?? [];
-    const allTokens = [...words, ...numbers].map((w) => this.normalizeWord(w));
-    return allTokens.filter((word) => word.length > 2 && !stopWords.has(word));
-  }
-
-  /**
-   * Normalize a word by stripping common English inflections
-   */
-  private normalizeWord(word: string): string {
-    const len = word.length;
-    if (len <= 3) return word;
-    if (word.endsWith('ing') && len > 4) return word.slice(0, -3);
-    if (word.endsWith('ed') && len > 4) return word.slice(0, -2);
-    if (word.endsWith('s') && !word.endsWith('ss') && len > 3) return word.slice(0, -1);
-    return word;
   }
 
   /**

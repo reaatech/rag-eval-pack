@@ -121,6 +121,67 @@ describe('JudgeEngine', () => {
     });
   });
 
+  describe('confidence', () => {
+    it('uses the judge self-reported confidence when present', async () => {
+      const engine = new JudgeEngine({ model: 'gpt-4o', provider: 'openai', api_key: 'k' });
+      vi.spyOn(engine as never, 'callOpenAI' as never).mockResolvedValue(
+        'Score: 0.80\nConfidence: 0.95\nExplanation: confident.',
+      );
+
+      const result = await engine.evaluate(sampleData, 'faithfulness');
+      expect(result.score).toBe(0.8);
+      expect(result.confidence).toBe(0.95);
+    });
+
+    it('falls back to neutral confidence when none is reported', async () => {
+      const engine = new JudgeEngine({ model: 'gpt-4o', provider: 'openai', api_key: 'k' });
+      vi.spyOn(engine as never, 'callOpenAI' as never).mockResolvedValue(
+        'Score: 0.80\nExplanation: no confidence given.',
+      );
+
+      const result = await engine.evaluate(sampleData, 'faithfulness');
+      expect(result.confidence).toBe(0.5);
+    });
+
+    it('derives consensus confidence from inter-judge agreement', async () => {
+      const config: JudgeConfig = {
+        provider: 'openai',
+        api_key: 'k',
+        consensus: {
+          enabled: true,
+          models: [{ id: 'gpt-4o' }, { id: 'gpt-4o-mini' }],
+          voting_strategy: 'weighted',
+        },
+      };
+      const engine = new JudgeEngine(config);
+      // Both judges fully agree on 0.8 → high agreement → confidence 1.
+      vi.spyOn(engine as never, 'callOpenAI' as never).mockResolvedValue(
+        'Score: 0.80\nConfidence: 0.40\nExplanation: x.',
+      );
+
+      const result = await engine.evaluateWithConsensus(sampleData, 'faithfulness');
+      expect(result.confidence).toBe(1);
+    });
+  });
+
+  describe('explicit provider config', () => {
+    it('uses config.provider and config.base_url to route to a gateway', async () => {
+      const engine = new JudgeEngine({
+        model: 'local-model',
+        provider: 'openai',
+        base_url: 'http://localhost:11434/v1',
+      });
+      const spy = vi
+        .spyOn(engine as never, 'callOpenAI' as never)
+        .mockResolvedValue('Score: 0.70\nExplanation: gateway.');
+
+      const result = await engine.evaluate(sampleData, 'relevance', 'local-model');
+      expect(spy).toHaveBeenCalledOnce();
+      expect(result.provider).toBe('openai');
+      expect(result.score).toBe(0.7);
+    });
+  });
+
   describe('evaluateWithConsensus', () => {
     it('should fall back to single evaluation when consensus disabled', async () => {
       const engine = new JudgeEngine(defaultConfig);

@@ -45,6 +45,7 @@ Generated Answer:
 Rate the faithfulness (0-1) and provide your explanation.
 Format your response as:
 Score: [0.0-1.0]
+Confidence: [0.0-1.0, how certain you are in this rating]
 Explanation: [your explanation]`,
 };
 
@@ -77,6 +78,7 @@ Generated Answer:
 Rate the relevance (0-1) and provide your explanation.
 Format your response as:
 Score: [0.0-1.0]
+Confidence: [0.0-1.0, how certain you are in this rating]
 Explanation: [your explanation]`,
 };
 
@@ -111,6 +113,7 @@ Retrieved Context Chunks:
 Rate the context precision (0-1) and provide your explanation.
 Format your response as:
 Score: [0.0-1.0]
+Confidence: [0.0-1.0, how certain you are in this rating]
 Explanation: [your explanation]`,
 };
 
@@ -147,6 +150,7 @@ Retrieved Context:
 Rate the context recall (0-1) and provide your explanation.
 Format your response as:
 Score: [0.0-1.0]
+Confidence: [0.0-1.0, how certain you are in this rating]
 Explanation: [your explanation]`,
 };
 
@@ -188,6 +192,7 @@ Generated Answer:
 Rate the overall quality (0-1) and provide your explanation.
 Format your response as:
 Score: [0.0-1.0]
+Confidence: [0.0-1.0, how certain you are in this rating]
 Explanation: [your explanation]`,
 };
 
@@ -217,10 +222,19 @@ export function applyPromptTemplate(
 }
 
 /**
- * Parse judge response to extract score and explanation
+ * Parse judge response to extract score, self-reported confidence, and explanation.
+ *
+ * `confidence` is the judge's own stated certainty when present — a more honest
+ * signal than deriving confidence from the score itself. It is `undefined` when
+ * the model did not provide one.
  */
-export function parseJudgeResponse(response: string): { score: number; explanation: string } {
+export function parseJudgeResponse(response: string): {
+  score: number;
+  confidence?: number;
+  explanation: string;
+} {
   const scoreMatch = response.match(/Score:\s*([0-9]*\.?[0-9]+)/i);
+  const confidenceMatch = response.match(/Confidence:\s*([0-9]*\.?[0-9]+)/i);
   const explanationMatch = response.match(/Explanation:\s*(.*)/is);
 
   const score = scoreMatch ? Number.parseFloat(scoreMatch[1] ?? '0.5') : 0.5;
@@ -229,5 +243,17 @@ export function parseJudgeResponse(response: string): { score: number; explanati
   // Clamp score to [0, 1]
   const clampedScore = Math.max(0, Math.min(1, score));
 
-  return { score: clampedScore, explanation };
+  const result: { score: number; confidence?: number; explanation: string } = {
+    score: clampedScore,
+    explanation: explanation ?? response,
+  };
+
+  if (confidenceMatch) {
+    const confidence = Number.parseFloat(confidenceMatch[1] ?? '');
+    if (!Number.isNaN(confidence)) {
+      result.confidence = Math.max(0, Math.min(1, confidence));
+    }
+  }
+
+  return result;
 }

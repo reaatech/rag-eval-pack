@@ -23,10 +23,21 @@ export interface EvaluationSample {
   ground_truth: string;
   /** RAG system's generated answer */
   generated_answer: string;
-  /** IDs of retrieved chunks (optional) */
+  /** IDs of retrieved chunks, in retrieval rank order (optional) */
   retrieved_chunk_ids?: string[];
+  /** IDs of the chunks that are actually relevant (ground-truth labels for retrieval metrics) */
+  relevant_chunk_ids?: string[];
   /** Additional metadata */
   metadata?: Record<string, unknown>;
+}
+
+/**
+ * Provider of text embeddings, used for true semantic similarity scoring.
+ * Implementations may wrap a provider SDK, a local model, or a cache.
+ */
+export interface EmbeddingProvider {
+  /** Embed a batch of texts, returning one vector per input (in order). */
+  embed(texts: string[]): Promise<number[][]>;
 }
 
 /** Faithfulness evaluation result */
@@ -60,7 +71,9 @@ export interface StatementSupport {
 export interface RelevanceResult {
   /** Score from 0 to 1 */
   score: number;
-  /** Semantic similarity score (if applicable) */
+  /** Lexical similarity score (word/character overlap; surface-form only) */
+  lexical_similarity?: number;
+  /** Semantic similarity score (cosine of embeddings; only when an EmbeddingProvider is configured) */
   semantic_similarity?: number;
   /** Intent coverage score */
   intent_score?: number;
@@ -105,6 +118,41 @@ export interface FactCoverage {
   fact: string;
   covered: boolean;
   matching_context?: string;
+}
+
+/**
+ * Retrieval ranking result.
+ *
+ * Standard information-retrieval metrics computed by comparing the ranked
+ * `retrieved_chunk_ids` against the ground-truth `relevant_chunk_ids`.
+ */
+export interface RetrievalResult {
+  /** Reciprocal rank of the first relevant chunk (0 if none retrieved) */
+  mrr: number;
+  /** Normalized discounted cumulative gain over the ranking */
+  ndcg: number;
+  /** Precision@k: fraction of the top-k retrieved chunks that are relevant */
+  precision_at_k: number;
+  /** Recall@k: fraction of all relevant chunks present in the top-k */
+  recall_at_k: number;
+  /** Hit@k: 1 if any relevant chunk appears in the top-k, else 0 */
+  hit_at_k: number;
+  /** The cutoff k used for the @k metrics */
+  k: number;
+  /** Explanation of the score */
+  explanation?: string;
+}
+
+/** Answer correctness result (generated answer vs. ground truth). */
+export interface AnswerCorrectnessResult {
+  /** Overall correctness score from 0 to 1 */
+  score: number;
+  /** Lexical similarity to the ground truth (surface-form only) */
+  lexical_similarity?: number;
+  /** Semantic similarity to the ground truth (only when an EmbeddingProvider is configured) */
+  semantic_similarity?: number;
+  /** Explanation of the score */
+  explanation?: string;
 }
 
 /** Complete evaluation result for a single sample */
@@ -239,16 +287,28 @@ export interface GateConfig {
   allow_regression?: boolean;
   /** Minimum improvement required */
   min_improvement?: number;
+  /**
+   * Tolerance band (absolute metric units). A regression smaller than this is
+   * treated as noise and does not fail the gate. Defaults to 0 (strict).
+   */
+  tolerance?: number;
+  /**
+   * Severity when the gate's check is not satisfied. `fail` (default) fails the
+   * overall run; `warn` records a warning but lets the run pass.
+   */
+  severity?: 'warn' | 'fail';
 }
 
 /** Gate evaluation result */
 export interface GateResult {
-  /** Whether all gates passed */
+  /** Whether all `fail`-severity gates passed */
   passed: boolean;
   /** Individual gate results */
   gates: IndividualGateResult[];
-  /** Failures summary */
+  /** Failures summary (fail-severity gates that did not pass) */
   failures: GateFailure[];
+  /** Warnings summary (warn-severity gates that did not pass) */
+  warnings: GateFailure[];
   /** Evaluation timestamp */
   evaluated_at: string;
 }
@@ -257,8 +317,12 @@ export interface GateResult {
 export interface IndividualGateResult {
   /** Gate name */
   name: string;
-  /** Whether this gate passed */
+  /** Whether this gate's check was satisfied */
   passed: boolean;
+  /** Severity of this gate (defaults to `fail`) */
+  severity?: 'warn' | 'fail';
+  /** Whether an unsatisfied check was downgraded to a warning */
+  warning?: boolean;
   /** Actual metric value */
   actual_value: number;
   /** Expected value/threshold */
@@ -305,6 +369,16 @@ export interface EvalSuiteConfig {
 export interface JudgeConfig {
   /** Primary judge model */
   model?: string;
+  /**
+   * Explicit provider. Overrides inference from the model name — required for
+   * OpenAI-compatible gateways, proxies, and self-hosted/local models whose
+   * names don't contain a recognizable provider keyword.
+   */
+  provider?: LLMProvider;
+  /** Base URL for an OpenAI-/provider-compatible endpoint (gateway, proxy, local server) */
+  base_url?: string;
+  /** API key override (falls back to provider-specific environment variables) */
+  api_key?: string;
   /** Fallback models */
   fallback_models?: string[];
   /** Calibration settings */

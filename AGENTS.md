@@ -57,11 +57,13 @@ core ← metrics ← suite ← mcp-server, cli
 | **Types & Schemas** | `@reaatech/rag-eval-core` | Domain types, Zod schemas |
 | **Faithfulness Scorer** | `@reaatech/rag-eval-metrics` | Measure answer grounding in context |
 | **Relevance Scorer** | `@reaatech/rag-eval-metrics` | Measure answer relevance to query |
-| **Context Precision** | `@reaatech/rag-eval-metrics` | Measure retrieval ranking quality |
+| **Context Precision** | `@reaatech/rag-eval-metrics` | Measure retrieval ranking quality (text-based) |
 | **Context Recall** | `@reaatech/rag-eval-metrics` | Measure ground truth coverage |
-| **LLM Judge** | `@reaatech/rag-eval-judge` | Calibrated quality scoring with multi-provider support |
+| **Retrieval Scorer** | `@reaatech/rag-eval-metrics` | Ranking metrics (MRR, nDCG, precision/recall/hit@k) from chunk IDs |
+| **Answer Correctness** | `@reaatech/rag-eval-metrics` | Measure generated answer vs. ground truth |
+| **LLM Judge** | `@reaatech/rag-eval-judge` | Calibrated quality scoring across any provider or OpenAI-compatible gateway |
 | **Cost Tracker** | `@reaatech/rag-eval-cost` | Per-evaluation cost calculation and budget enforcement |
-| **Gate Engine** | `@reaatech/rag-eval-gate` | CI regression gates and threshold checks |
+| **Gate Engine** | `@reaatech/rag-eval-gate` | CI regression gates with tolerance bands and warn/fail severity |
 | **Dataset Manager** | `@reaatech/rag-eval-dataset` | Dataset loading, validation, generation |
 | **Observability** | `@reaatech/rag-eval-observability` | Structured logging, OTel tracing, metrics |
 | **Evaluation Suite** | `@reaatech/rag-eval-suite` | Central orchestrator tying all modules together |
@@ -126,7 +128,7 @@ Fast, stateless, composable operations for mid-task self-evaluation:
 | Tool | Input | Output | Use Case |
 |------|-------|--------|----------|
 | `rag_eval.judge.faithfulness` | `{ context, generated_answer }` | `{ score, statements, supported_count }` | Check if answer is faithful to context |
-| `rag_eval.judge.relevance` | `{ query, generated_answer }` | `{ score, semantic_similarity, intent_score }` | Check if answer addresses query |
+| `rag_eval.judge.relevance` | `{ query, generated_answer }` | `{ score, lexical_similarity, intent_score }` | Check if answer addresses query (semantic_similarity added when an embedding provider is configured) |
 | `rag_eval.judge.context_precision` | `{ query, context[], ground_truth }` | `{ score, map, ndcg }` | Check context ranking quality |
 | `rag_eval.judge.context_recall` | `{ query, context[], ground_truth }` | `{ score, total_facts, covered_facts }` | Check ground truth coverage |
 | `rag_eval.judge.cost_check` | `{ eval_result, budget }` | `{ within_budget, cost }` | Verify cost within budget |
@@ -229,6 +231,13 @@ Opinionated, blocking operations for CI/CD:
 judge:
   # Primary judge model (any provider)
   model: claude-opus
+
+  # Explicit provider/endpoint — required for OpenAI-compatible gateways,
+  # proxies, or self-hosted/local models whose names lack a provider keyword.
+  # Omit to infer the provider from the model name.
+  # provider: openai
+  # base_url: http://localhost:11434/v1
+  # api_key: ${OPENAI_API_KEY}
 
   # Fallback models for resilience
   fallback_models:
@@ -433,11 +442,13 @@ gates:
     operator: ">="
     threshold: 0.85
 
+  # severity: warn records a non-blocking warning instead of failing the run
   - name: min-relevance
     type: threshold
     metric: avg_relevance
     operator: ">="
     threshold: 0.80
+    severity: warn
 
   - name: min-context-precision
     type: threshold
@@ -461,6 +472,8 @@ gates:
     type: baseline-comparison
     metric: overall_score
     allow_regression: false
+    # tolerance absorbs sampling noise so small dips don't fail CI
+    tolerance: 0.01
 ```
 
 ---
@@ -678,7 +691,6 @@ Before deploying a RAG evaluation pipeline to production:
 ## References
 
 - **ARCHITECTURE.md** — System design deep dive and package relationships
-- **DEV_PLAN.md** — Development checklist
 - **README.md** — Quick start and overview
 - **datasets/examples/** — Example evaluation datasets
 - **MCP Specification** — https://modelcontextprotocol.io/

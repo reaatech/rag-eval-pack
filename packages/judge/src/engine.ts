@@ -59,26 +59,39 @@ export class JudgeEngine {
   }
 
   /**
-   * Get API key for a model from environment
+   * Get API key for a provider.
+   *
+   * Precedence: explicit `config.api_key`, then the provider-specific
+   * environment variable. Lets self-hosted/gateway setups supply credentials
+   * directly instead of relying on model-name keyword inference.
    */
-  private getApiKeyForModel(model: string): string {
-    const modelLower = model.toLowerCase();
-    if (modelLower.includes('claude') || modelLower.includes('anthropic')) {
-      return process.env.ANTHROPIC_API_KEY ?? '';
+  private getApiKeyForProvider(provider: LLMProvider): string {
+    if (this.config.api_key) {
+      return this.config.api_key;
     }
-    if (modelLower.includes('gpt') || modelLower.includes('openai')) {
-      return process.env.OPENAI_API_KEY ?? '';
+    switch (provider) {
+      case 'anthropic':
+        return process.env.ANTHROPIC_API_KEY ?? '';
+      case 'openai':
+        return process.env.OPENAI_API_KEY ?? '';
+      case 'google':
+        return process.env.GOOGLE_API_KEY ?? '';
+      default:
+        return '';
     }
-    if (modelLower.includes('gemini') || modelLower.includes('google')) {
-      return process.env.GOOGLE_API_KEY ?? '';
-    }
-    return '';
   }
 
   /**
-   * Determine provider from model name
+   * Determine the provider for a model.
+   *
+   * An explicit `config.provider` always wins — required for OpenAI-compatible
+   * gateways, proxies, and local models whose names lack a provider keyword.
+   * Otherwise the provider is inferred from the model name.
    */
   private getProvider(model: string): LLMProvider {
+    if (this.config.provider) {
+      return this.config.provider;
+    }
     const modelLower = model.toLowerCase();
     if (modelLower.includes('claude') || modelLower.includes('anthropic')) {
       return 'anthropic';
@@ -125,7 +138,8 @@ export class JudgeEngine {
         score: Math.round(calibratedScore * 1000) / 1000,
         raw_score: parsed.score,
         explanation: parsed.explanation,
-        confidence: this.calculateConfidence(parsed.score),
+        // Prefer the judge's self-reported confidence; fall back to neutral.
+        confidence: parsed.confidence ?? 0.5,
         calibrated,
         model: targetModel,
         provider,
@@ -200,13 +214,14 @@ export class JudgeEngine {
             return sum + r.score * weight;
           }, 0) / totalWeight;
 
-        const avgConfidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
+        // Confidence reflects how much the judges agreed, not the score itself.
+        const agreement = this.agreementConfidence(results.map((r) => r.score));
         const explanations = results.map((r) => r.explanation).join('\n\n');
 
         return {
           score: Math.round(weightedScore * 1000) / 1000,
           explanation: `Consensus (weighted): ${explanations}`,
-          confidence: Math.round(avgConfidence * 1000) / 1000,
+          confidence: Math.round(agreement * 1000) / 1000,
           calibrated: results.some((r) => r.calibrated),
           raw_score: weightedScore,
           model: config.models.map((m) => m.id).join(', '),
@@ -329,9 +344,12 @@ export class JudgeEngine {
     system: string,
     user: string,
   ): Promise<string> {
-    const apiKey = this.getApiKeyForModel(model);
+    const apiKey = this.getApiKeyForProvider(provider);
+    const baseUrl = this.config.base_url;
 
-    if (provider === 'mock' || !apiKey) {
+    // A configured base URL (gateway / local server) is enough to attempt a
+    // real call even when no API key is set.
+    if (provider === 'mock' || (!apiKey && !baseUrl)) {
       return this.mockLLMResponse(system, user);
     }
 
@@ -342,11 +360,11 @@ export class JudgeEngine {
       try {
         switch (provider) {
           case 'anthropic':
-            return await this.callAnthropic(model, apiKey, system, user);
+            return await this.callAnthropic(model, apiKey, system, user, baseUrl);
           case 'openai':
-            return await this.callOpenAI(model, apiKey, system, user);
+            return await this.callOpenAI(model, apiKey, system, user, baseUrl);
           case 'google':
-            return await this.callGoogle(model, apiKey, system, user);
+            return await this.callGoogle(model, apiKey, system, user, baseUrl);
           default:
             return this.mockLLMResponse(system, user);
         }
@@ -391,10 +409,14 @@ export class JudgeEngine {
     apiKey: string,
     system: string,
     user: string,
+    baseUrl?: string,
   ): Promise<string> {
     // Dynamic import to avoid requiring the package at runtime if not used
     const { Anthropic } = await import('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({
+      apiKey: apiKey || 'not-required',
+      ...(baseUrl ? { baseURL: baseUrl } : {}),
+    });
 
     const response = await client.messages.create({
       model,
@@ -414,9 +436,13 @@ export class JudgeEngine {
     apiKey: string,
     system: string,
     user: string,
+    baseUrl?: string,
   ): Promise<string> {
     const { OpenAI } = await import('openai');
-    const client = new OpenAI({ apiKey });
+    const client = new OpenAI({
+      apiKey: apiKey || 'not-required',
+      ...(baseUrl ? { baseURL: baseUrl } : {}),
+    });
 
     const response = await client.chat.completions.create({
       model,
@@ -438,10 +464,11 @@ export class JudgeEngine {
     apiKey: string,
     system: string,
     user: string,
+    baseUrl?: string,
   ): Promise<string> {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const generativeModel = genAI.getGenerativeModel({ model });
+    const genAI = new GoogleGenerativeAI(apiKey || 'not-required');
+    const generativeModel = genAI.getGenerativeModel({ model }, baseUrl ? { baseUrl } : undefined);
 
     const response = await generativeModel.generateContent(`${system}\n\n${user}`);
     return response.response.text();
@@ -463,6 +490,7 @@ export class JudgeEngine {
     const score = 0.5 + (normalizedScore - 0.5) * 0.3;
 
     return `Score: ${score.toFixed(2)}
+Confidence: 0.50
 Explanation: Mock evaluation - in production, this would be evaluated by an LLM judge.`;
   }
 
@@ -477,11 +505,18 @@ Explanation: Mock evaluation - in production, this would be evaluated by an LLM 
   }
 
   /**
-   * Calculate confidence in the score
+   * Confidence derived from inter-judge agreement.
+   *
+   * Tight clustering of scores → high confidence; wide disagreement → low.
+   * This is a real uncertainty signal, unlike deriving confidence from a
+   * single score's distance from 0.5. Uses 1 - 2·stddev, clamped to [0, 1].
    */
-  private calculateConfidence(score: number): number {
-    // Higher confidence when score is far from 0.5 (uncertain)
-    return Math.abs(score - 0.5) * 2;
+  private agreementConfidence(scores: number[]): number {
+    if (scores.length <= 1) return 1;
+    const mean = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+    const variance = scores.reduce((sum, s) => sum + (s - mean) ** 2, 0) / scores.length;
+    const stdDev = Math.sqrt(variance);
+    return Math.max(0, Math.min(1, 1 - 2 * stdDev));
   }
 
   /**

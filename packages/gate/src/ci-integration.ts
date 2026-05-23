@@ -42,14 +42,16 @@ export class CIIntegration {
   }
 
   generateJUnitXml(gateResult: GateResult, _evalResults?: EvalResults): string {
-    const failedTests = gateResult.gates.filter((g) => !g.passed).length;
+    // `warn`-severity gates are not hard failures.
+    const isHardFailure = (g: { passed: boolean; warning?: boolean }) => !g.passed && !g.warning;
+    const failedTests = gateResult.gates.filter(isHardFailure).length;
 
     const testCases = gateResult.gates
       .map(
         (
           gate,
         ) => `    <testcase name="${this.escapeXml(gate.name)}" time="0" classname="GateEvaluation">
-      ${!gate.passed ? `<failure message="${this.escapeXml(gate.message)}">${this.escapeXml(gate.message)}</failure>` : ''}
+      ${isHardFailure(gate) ? `<failure message="${this.escapeXml(gate.message)}">${this.escapeXml(gate.message)}</failure>` : ''}${gate.warning ? `<skipped message="${this.escapeXml(gate.message)}" />` : ''}
     </testcase>`,
       )
       .join('\n');
@@ -110,10 +112,18 @@ ${testCases}
       '| Gate | Result | Details |',
       '|------|--------|---------|',
       ...gateResult.gates.map(
-        (g) => `| ${g.name} | ${g.passed ? '✅ Pass' : '❌ Fail'} | ${g.message} |`,
+        (g) =>
+          `| ${g.name} | ${g.passed ? '✅ Pass' : g.warning ? '⚠️ Warn' : '❌ Fail'} | ${g.message} |`,
       ),
       '',
     ];
+
+    if (gateResult.warnings && gateResult.warnings.length > 0) {
+      lines.push(
+        `> ⚠️ ${gateResult.warnings.length} warning gate(s) did not pass (non-blocking).`,
+        '',
+      );
+    }
 
     return lines.join('\n');
   }
